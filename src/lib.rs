@@ -26,6 +26,7 @@ pub enum Cell {
     Alive = 1,
 }
 
+// TODO: use fixedbitset for storing cells
 #[wasm_bindgen]
 pub struct Universe {
     width: u32,
@@ -36,6 +37,7 @@ pub struct Universe {
 /// public methods for JS
 #[wasm_bindgen]
 impl Universe {
+    // TODO: random generation of initial layout with js-sys
     pub fn new() -> Universe {
         let width = 64;
         let height = 64;
@@ -92,6 +94,23 @@ impl Universe {
         }
 
         self.cells = next;
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Returns a pointer to the cells buffer.
+    ///
+    /// Cells are laid out as a linear stack of rows.
+    /// Mapping from (row, col) coordinates to an index into the linear stack
+    /// can be done with: `idx = (row_num * width + col_num)`
+    pub fn cells(&self) -> *const Cell {
+        self.cells.as_ptr()
     }
 }
 
