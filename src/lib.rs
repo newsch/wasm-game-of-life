@@ -104,6 +104,22 @@ impl Universe {
         self.height
     }
 
+    /// Set the width of the universe.
+    ///
+    /// Resets all cells to the dead state.
+    pub fn set_width(&mut self, width: u32) {
+        self.width = width;
+        self.make_cells();
+    }
+
+    /// Set the height of the universe.
+    ///
+    /// Resets all cells to the dead state.
+    pub fn set_height(&mut self, height: u32) {
+        self.height = height;
+        self.make_cells();
+    }
+
     /// Returns a pointer to the cells buffer.
     ///
     /// Cells are laid out as a linear stack of rows.
@@ -114,12 +130,35 @@ impl Universe {
     }
 }
 
-/// non-exported methods
+/// non-JS-exported methods
 impl Universe {
+
+    /// Get the dead and alive values of the entire universe.
+    pub fn get_cells(&self) -> &[Cell] {
+        &self.cells
+    }
+
+    /// Set cells to be alive in a universe by passing the row and column
+    /// of each cell as an array.
+    pub fn set_cells(&mut self, cells: &[(u32, u32)]) {
+        for (row, col) in cells.iter().cloned() {
+            let idx = self.get_index(row, col);
+            self.cells[idx] = Cell::Alive;
+        }
+    }
+
     fn get_index(&self, row: u32, col: u32) -> usize {
         debug_assert!(row < self.height);
         debug_assert!(col < self.width);
         (row * self.width + col) as usize
+    }
+
+    /// Sets the cells buffer to match height and width dimensions.
+    ///
+    /// Resets all cells to the dead state.
+    #[inline]
+    fn make_cells(&mut self) {
+        self.cells = (0..self.width * self.height).map(|_i| Cell::Dead).collect();
     }
 
     fn live_neighbor_count(&self, row: u32, col: u32) -> u8 {
