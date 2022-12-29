@@ -17,14 +17,17 @@
           justify-content: center;
         }
 
-        #toggle {
-          margin: 10px;
+        #controls button {
+          margin: 5px;
         }
       </style>
   </head>
   <body>
     <canvas id="game-of-life-canvas"></canvas>
-    <button id="toggle">toggle</button>
+    <form id="controls" onsubmit="event.preventDefault();">
+        <button id="play-pause">▶</button>
+        <button id="step">step</button>
+    </form>
 
     <script src="./bootstrap.js"></script>
   </body>

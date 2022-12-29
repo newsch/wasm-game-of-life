@@ -6,14 +6,38 @@ const GRID_COLOR = "#CCCCCC";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
-var is_running = true;
+let animationId = null;
 
-const togglebtn = document.getElementById("toggle");
-togglebtn.addEventListener("click", () => {
-    is_running = !is_running;
-    if (is_running) {
-        requestAnimationFrame(renderLoop);
+const isPaused = () => {
+    return animationId === null;
+};
+
+const playPauseBtn = document.getElementById("play-pause");
+const stepBtn = document.getElementById("step");
+
+function play() {
+    playPauseBtn.textContent = "⏸";
+    stepBtn.enabled = false;
+    renderLoop();
+};
+
+function pause() {
+    playPauseBtn.textContent = "▶";
+    cancelAnimationFrame(animationId);
+    stepBtn.enabled = true;
+    animationId = null;
+}
+
+playPauseBtn.addEventListener("click", () => {
+    if (isPaused()) {
+        play();
+    } else {
+        pause();
     }
+});
+
+stepBtn.addEventListener("click", () => {
+    renderLoop(false);
 });
 
 const pre = document.getElementById("game-of-life-canvas");
@@ -27,13 +51,14 @@ canvas.width = (CELL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext("2d");
 
-const renderLoop = () => {
+function renderLoop(loop = true) {
+    // debugger;
     universe.tick();
-    // drawGrid();
+    drawGrid();
     drawCells();
 
-    if (is_running) {
-        requestAnimationFrame(renderLoop);
+    if (loop) {
+        animationId = requestAnimationFrame(renderLoop);
     }
 }
 
@@ -89,4 +114,4 @@ function drawCells() {
 
 drawGrid();
 drawCells();
-requestAnimationFrame(renderLoop);
+// requestAnimationFrame(renderLoop);

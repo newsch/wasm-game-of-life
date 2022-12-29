@@ -39,6 +39,8 @@ pub struct Universe {
 impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new() -> Universe {
+        utils::set_panic_hook();
+        
         let width = 64;
         let height = 64;
         let cells = (0..width * height)
@@ -73,6 +75,8 @@ impl Universe {
                 let cell = self.cells[idx];
                 let live_neighbors = self.live_neighbor_count(row, col);
 
+                // log!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
+
                 let next_cell = match (cell, live_neighbors) {
                     // Rule 1: Any live cell with fewer than two neighbors dies.
                     (Cell::Alive, x) if x < 2 => Cell::Dead,
@@ -88,6 +92,8 @@ impl Universe {
                     // All other cells remain in the same state.
                     (otherwise, _) => otherwise,
                 };
+
+                // log!("it becomes {next_cell:?}");
 
                 next[idx] = next_cell;
             }
