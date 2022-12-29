@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
-extern {
+extern "C" {
     fn alert(s: &str);
 }
 
@@ -26,6 +26,15 @@ pub enum Cell {
     Alive = 1,
 }
 
+impl Cell {
+    fn toggle(&mut self) {
+        *self = match *self {
+            Cell::Dead => Cell::Alive,
+            Cell::Alive => Cell::Dead,
+        }
+    }
+}
+
 // TODO: use fixedbitset for storing cells
 #[wasm_bindgen]
 pub struct Universe {
@@ -38,25 +47,41 @@ pub struct Universe {
 #[wasm_bindgen]
 impl Universe {
     // TODO: random generation of initial layout with js-sys
-    pub fn new() -> Universe {
+    pub fn new(width: u32, height: u32) -> Universe {
         utils::set_panic_hook();
-        
-        let width = 64;
-        let height = 64;
-        let cells = (0..width * height)
-            .map(|i| {
-                if i % 2 == 0 || i % 7 == 0 {
-                    Cell::Alive
-                } else {
-                    Cell::Dead
-                }
-            })
-            .collect();
+
+        let cells = vec![Cell::Dead; (width * height) as usize];
 
         Universe {
             width,
             height,
             cells,
+        }
+    }
+
+    pub fn reset_blank(&mut self) {
+        for i in 0..(self.height * self.width) as usize {
+            self.cells[i] = Cell::Dead;
+        }
+    }
+
+    pub fn reset_fancy(&mut self) {
+        for i in 0..(self.height * self.width) as usize {
+            self.cells[i] = if i % 2 == 0 || i % 7 == 0 {
+                Cell::Alive
+            } else {
+                Cell::Dead
+            };
+        }
+    }
+
+    pub fn reset_random(&mut self) {
+        for i in 0..(self.height * self.width) as usize {
+            self.cells[i] = if js_sys::Math::random() < 0.5 {
+                Cell::Alive
+            } else {
+                Cell::Dead
+            };
         }
     }
 
@@ -67,7 +92,7 @@ impl Universe {
 
     /// Updates the Universe, bringing cells into and out of existence.
     pub fn tick(&mut self) {
-        let mut next = self.cells.clone();  // future universe
+        let mut next = self.cells.clone(); // future universe
 
         for row in 0..self.height {
             for col in 0..self.width {
@@ -134,11 +159,15 @@ impl Universe {
     pub fn cells(&self) -> *const Cell {
         self.cells.as_ptr()
     }
+
+    pub fn toggle_cell(&mut self, row: u32, column: u32) {
+        let idx = self.get_index(row, column);
+        self.cells[idx].toggle();
+    }
 }
 
 /// non-JS-exported methods
 impl Universe {
-
     /// Get the dead and alive values of the entire universe.
     pub fn get_cells(&self) -> &[Cell] {
         &self.cells

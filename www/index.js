@@ -2,7 +2,8 @@ import { Universe, Cell } from "wasm-game-of-life";
 import { memory } from "wasm-game-of-life/wasm_game_of_life_bg";
 
 const CELL_SIZE = 5;  // width/height in pixels
-const GRID_COLOR = "#CCCCCC";
+// const GRID_COLOR = "#CCCCCC";
+const GRID_COLOR = "#FFFFFF";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
@@ -14,18 +15,37 @@ const isPaused = () => {
 
 const playPauseBtn = document.getElementById("play-pause");
 const stepBtn = document.getElementById("step");
+const patternSlt = document.getElementById("pattern-select");
 
 function play() {
-    playPauseBtn.textContent = "⏸";
+    // playPauseBtn.textContent = "⏸";
+    playPauseBtn.textContent = "⏯";
     stepBtn.enabled = false;
     renderLoop();
 };
 
 function pause() {
-    playPauseBtn.textContent = "▶";
+    // playPauseBtn.textContent = "▶";
+    playPauseBtn.textContent = "⏯";
     cancelAnimationFrame(animationId);
     stepBtn.enabled = true;
     animationId = null;
+}
+
+function reset(pattern) {
+    switch(pattern) {
+        case "fancy":
+            universe.reset_fancy();
+            break;
+        case "random":
+            universe.reset_random();
+            break;
+        case "blank":
+            universe.reset_blank();
+            break;
+        default:
+            throw "unknown pattern: " + pattern;
+    }
 }
 
 playPauseBtn.addEventListener("click", () => {
@@ -40,8 +60,16 @@ stepBtn.addEventListener("click", () => {
     renderLoop(false);
 });
 
+patternSlt.addEventListener("change", event => {
+    const pattern = event.target.value;
+    reset(pattern);
+    drawGrid();
+    drawCells();
+});
+
 const pre = document.getElementById("game-of-life-canvas");
-const universe = Universe.new();
+const universe = Universe.new(64, 64);
+universe.reset_fancy();
 const width = universe.width();
 const height = universe.height();
 
@@ -50,6 +78,23 @@ canvas.height = (CELL_SIZE + 1) * height + 1;
 canvas.width = (CELL_SIZE + 1) * width + 1;
 
 const ctx = canvas.getContext("2d");
+
+canvas.addEventListener("click", event => {
+    const boundingRect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / boundingRect.width;
+    const scaleY = canvas.height / boundingRect.height;
+
+    const canvasLeft = (event.clientX - boundingRect.left) * scaleX;
+    const canvasTop = (event.clientY - boundingRect.top) * scaleY;
+
+    const row = Math.min(Math.floor(canvasTop / (CELL_SIZE + 1)), height - 1);
+    const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
+
+    universe.toggle_cell(row, col);
+    drawGrid();
+    drawCells();
+});
 
 function renderLoop(loop = true) {
     // debugger;
