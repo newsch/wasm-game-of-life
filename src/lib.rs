@@ -1,4 +1,5 @@
 mod utils;
+use utils::Timer;
 
 use wasm_bindgen::prelude::*;
 
@@ -92,6 +93,7 @@ impl Universe {
 
     /// Updates the Universe, bringing cells into and out of existence.
     pub fn tick(&mut self) {
+        let _timer = Timer::new("Universe::tick");
         let mut next = self.cells.clone(); // future universe
 
         for row in 0..self.height {
