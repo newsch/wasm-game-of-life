@@ -116,7 +116,7 @@ patternSlt.addEventListener("change", event => {
 });
 
 const pre = document.getElementById("game-of-life-canvas");
-const universe = Universe.new(128, 128);
+const universe = Universe.new(64, 64);
 universe.reset_fancy();
 const width = universe.width();
 const height = universe.height();

@@ -2,7 +2,7 @@
 name = "wasm-game-of-life"
 version = "0.1.0"
 authors = ["Evan New-Schmidt <evan@new-schmidt.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -34,3 +34,7 @@ wasm-bindgen-test = "0.2"
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+
+[profile.bench]
+debug = true
+strip = "none"

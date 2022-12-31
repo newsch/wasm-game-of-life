@@ -94,38 +94,45 @@ impl Universe {
     /// Updates the Universe, bringing cells into and out of existence.
     pub fn tick(&mut self) {
         let _timer = Timer::new("Universe::tick");
-        let mut next = self.cells.clone(); // future universe
+        let mut next = {
+            let _timer = Timer::new("allocate next cells");
+            self.cells.clone()
+        }; // future universe
 
-        for row in 0..self.height {
-            for col in 0..self.width {
-                let idx = self.get_index(row, col);
-                let cell = self.cells[idx];
-                let live_neighbors = self.live_neighbor_count(row, col);
+        {
+            let _timer = Timer::new("new generation");
+            for row in 0..self.height {
+                for col in 0..self.width {
+                    let idx = self.get_index(row, col);
+                    let cell = self.cells[idx];
+                    let live_neighbors = self.live_neighbor_count(row, col);
 
-                // log!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
+                    // log!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
 
-                let next_cell = match (cell, live_neighbors) {
-                    // Rule 1: Any live cell with fewer than two neighbors dies.
-                    (Cell::Alive, x) if x < 2 => Cell::Dead,
-                    // Rule 2: Any live cell with two or three live neighbours
-                    // lives on to the next generation.
-                    (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-                    // Rule 3: Any live cell with more than three neighbours
-                    // dies.
-                    (Cell::Alive, x) if x > 3 => Cell::Dead,
-                    // Rule 4: Any dead cell with exactly three neighbours
-                    // becomes a live cell.
-                    (Cell::Dead, 3) => Cell::Alive,
-                    // All other cells remain in the same state.
-                    (otherwise, _) => otherwise,
-                };
+                    let next_cell = match (cell, live_neighbors) {
+                        // Rule 1: Any live cell with fewer than two neighbors dies.
+                        (Cell::Alive, x) if x < 2 => Cell::Dead,
+                        // Rule 2: Any live cell with two or three live neighbours
+                        // lives on to the next generation.
+                        (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
+                        // Rule 3: Any live cell with more than three neighbours
+                        // dies.
+                        (Cell::Alive, x) if x > 3 => Cell::Dead,
+                        // Rule 4: Any dead cell with exactly three neighbours
+                        // becomes a live cell.
+                        (Cell::Dead, 3) => Cell::Alive,
+                        // All other cells remain in the same state.
+                        (otherwise, _) => otherwise,
+                    };
 
-                // log!("it becomes {next_cell:?}");
+                    // log!("it becomes {next_cell:?}");
 
-                next[idx] = next_cell;
+                    next[idx] = next_cell;
+                }
             }
         }
 
+        let _timer2 = Timer::new("free old cells");
         self.cells = next;
     }
 
@@ -199,21 +206,30 @@ impl Universe {
     }
 
     fn live_neighbor_count(&self, row: u32, col: u32) -> u8 {
-        let mut count = 0;
-        // use self.height/width - 1 for subtraction b/c of unsigned integers and modulo math
-        for delta_row in [self.height - 1, 0, 1].iter().cloned() {
-            for delta_col in [self.width - 1, 0, 1].iter().cloned() {
-                if delta_row == 0 && delta_col == 0 {
-                    continue;
-                }
+        let north = if row == 0 { self.height - 1 } else { row - 1 };
 
-                let neighbor_row = (row + delta_row) % self.height;
-                let neighbor_col = (col + delta_col) % self.width;
+        let south = if row == self.height - 1 { 0 } else { row + 1 };
 
-                let idx = self.get_index(neighbor_row, neighbor_col);
-                count += self.cells[idx] as u8;
-            }
-        }
+        let west = if col == 0 { self.width - 1 } else { col - 1 };
+
+        let east = if col == self.width - 1 { 0 } else { col + 1 };
+
+        let neighbors = [
+            (north, west),
+            (north, col),
+            (north, east),
+            (row, west),
+            (row, east),
+            (south, west),
+            (south, col),
+            (south, east),
+        ];
+
+        let count = neighbors
+            .into_iter()
+            .map(|(r, c)| self.cells[self.get_index(r, c)] as u8)
+            .sum();
+
         return count;
     }
 }
