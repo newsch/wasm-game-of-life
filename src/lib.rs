@@ -1,5 +1,6 @@
 mod utils;
 use utils::Timer;
+use log::{info, trace};
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -41,7 +42,13 @@ impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new(width: u32, height: u32) -> Universe {
         #[cfg(feature = "wasm")]
-        utils::set_panic_hook();
+        {
+            console_error_panic_hook::set_once();
+            console_log::init()
+            // console_log::init_with_level(Level::Trace)
+                .expect("error initializing log");
+            info!("Hello from wasm!");
+        }
 
         let cells = vec![Cell::Dead; (width * height) as usize];
 
@@ -100,7 +107,7 @@ impl Universe {
                     let cell = self.cells[idx];
                     let live_neighbors = self.live_neighbor_count(row, col);
 
-                    // log!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
+                    trace!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
 
                     let next_cell = match (cell, live_neighbors) {
                         // Rule 1: Any live cell with fewer than two neighbors dies.
@@ -118,7 +125,7 @@ impl Universe {
                         (otherwise, _) => otherwise,
                     };
 
-                    // log!("it becomes {next_cell:?}");
+                    trace!("it becomes {next_cell:?}");
 
                     next[idx] = next_cell;
                 }

@@ -9,7 +9,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5164d292487f037ece34ec0de2fcede2faa162f085dd96d2385ab81b12765ba"
 dependencies = [
  "backtrace-sys",
- "cfg-if",
+ "cfg-if 0.1.9",
  "libc",
  "rustc-demangle",
 ]
@@ -43,13 +43,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b486ce3ccf7ffd79fdeb678eac06a9e6c09fc88d33836340becb8fffe87c5e33"
 
 [[package]]
+name = "cfg-if"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
 name = "console_error_panic_hook"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
 dependencies = [
- "cfg-if",
+ "cfg-if 0.1.9",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "console_log"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "501a375961cef1a0d44767200e66e4a559283097e91d0730b1d75dfb2f8a1494"
+dependencies = [
+ "log",
+ "web-sys",
 ]
 
 [[package]]
@@ -112,11 +128,11 @@ checksum = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 
 [[package]]
 name = "log"
-version = "0.4.8"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
+checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
- "cfg-if",
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
@@ -274,7 +290,7 @@ version = "0.2.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "220f01bcb6b306c063e3283f97dd974bcab4e5affed2b654bae1a22d0d99c3aa"
 dependencies = [
- "cfg-if",
+ "cfg-if 0.1.9",
  "wasm-bindgen-macro",
 ]
 
@@ -299,7 +315,7 @@ version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fe2e3e8dfd437dd655c4afb3669ebb0c1578589b1398e4c1290510bf2d0dcc2"
 dependencies = [
- "cfg-if",
+ "cfg-if 0.1.9",
  "futures",
  "js-sys",
  "wasm-bindgen",
@@ -381,7 +397,9 @@ name = "wasm-game-of-life"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
+ "console_log",
  "js-sys",
+ "log",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
@@ -407,7 +425,7 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31d4e6572d21ac55398bc91db827f48c3fdb8152ae60f4c358f6780e1035ffcc"
 dependencies = [
- "cfg-if",
+ "cfg-if 0.1.9",
  "libc",
  "memory_units",
  "unreachable",
