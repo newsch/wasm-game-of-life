@@ -1,6 +1,6 @@
 mod utils;
+use log::trace;
 use utils::Timer;
-use log::{info, trace};
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -36,20 +36,21 @@ pub struct Universe {
     cells: Vec<Cell>,
 }
 
+#[cfg(feature = "wasm")]
+#[wasm_bindgen(start)]
+pub fn init() {
+    console_error_panic_hook::set_once();
+    console_log::init()
+        // console_log::init_with_level(Level::Trace)
+        .expect("error initializing log");
+    log::info!("Hello from wasm!");
+}
+
 /// public methods for JS
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new(width: u32, height: u32) -> Universe {
-        #[cfg(feature = "wasm")]
-        {
-            console_error_panic_hook::set_once();
-            console_log::init()
-            // console_log::init_with_level(Level::Trace)
-                .expect("error initializing log");
-            info!("Hello from wasm!");
-        }
-
         let cells = vec![Cell::Dead; (width * height) as usize];
 
         Universe {
