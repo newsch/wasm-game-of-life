@@ -57,18 +57,19 @@ const isPaused = () => {
 const playPauseBtn = document.getElementById("play-pause");
 const stepBtn = document.getElementById("step");
 const patternSlt = document.getElementById("pattern-select");
+const resetBtn = document.getElementById("reset");
 
 function play() {
-    // playPauseBtn.textContent = "⏸";
-    playPauseBtn.textContent = "⏯";
+    playPauseBtn.textContent = "⏸";
+    // playPauseBtn.textContent = "⏯";
     stepBtn.enabled = false;
     renderLoop();
     fps.reset();
 };
 
 function pause() {
-    // playPauseBtn.textContent = "▶";
-    playPauseBtn.textContent = "⏯";
+    playPauseBtn.textContent = "▶";
+    // playPauseBtn.textContent = "⏯";
     cancelAnimationFrame(animationId);
     stepBtn.enabled = true;
     animationId = null;
@@ -104,6 +105,13 @@ stepBtn.addEventListener("click", () => {
 
 patternSlt.addEventListener("change", event => {
     const pattern = event.target.value;
+    reset(pattern);
+    drawGrid();
+    drawCells();
+});
+
+resetBtn.addEventListener("click", () => {
+    const pattern = patternSlt.value;
     reset(pattern);
     drawGrid();
     drawCells();

@@ -21,8 +21,10 @@
             cursor: crosshair;
         }
 
-        #controls button {
+        #controls button, select {
           margin: 5px;
+          height: 1.8rem;
+          min-width: 1.8rem;
         }
       </style>
   </head>
@@ -35,6 +37,7 @@
             <option value="blank">Blank</option>
             <option value="random">Random</option>
         </select>
+        <button id="reset">reset</button>
         <button id="play-pause">⏯</button>
         <button id="step">step</button>
     </form>
