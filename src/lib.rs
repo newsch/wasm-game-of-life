@@ -1,25 +1,16 @@
 mod utils;
 use utils::Timer;
 
+#[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
-#[cfg(feature = "wee_alloc")]
+#[cfg(feature = "wasm")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
-}
-
-#[wasm_bindgen]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -37,7 +28,7 @@ impl Cell {
 }
 
 // TODO: use fixedbitset for storing cells
-#[wasm_bindgen]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct Universe {
     width: u32,
     height: u32,
@@ -45,10 +36,11 @@ pub struct Universe {
 }
 
 /// public methods for JS
-#[wasm_bindgen]
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new(width: u32, height: u32) -> Universe {
+        #[cfg(feature = "wasm")]
         utils::set_panic_hook();
 
         let cells = vec![Cell::Dead; (width * height) as usize];
@@ -76,6 +68,7 @@ impl Universe {
         }
     }
 
+    #[cfg(feature = "wasm")]
     pub fn reset_random(&mut self) {
         for i in 0..(self.height * self.width) as usize {
             self.cells[i] = if js_sys::Math::random() < 0.5 {
