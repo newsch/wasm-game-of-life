@@ -34,6 +34,9 @@ pub struct Universe {
     width: u32,
     height: u32,
     cells: Vec<Cell>,
+    old_cells: Vec<Cell>,
+    delta_alive: Vec<u32>,
+    delta_dead: Vec<u32>,
 }
 
 #[cfg(feature = "wasm")]
@@ -52,11 +55,15 @@ impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new(width: u32, height: u32) -> Universe {
         let cells = vec![Cell::Dead; (width * height) as usize];
+        let old_cells = cells.clone();
 
         Universe {
             width,
             height,
             cells,
+            old_cells,
+            delta_alive: Vec::new(),
+            delta_dead: Vec::new(),
         }
     }
 
@@ -95,11 +102,6 @@ impl Universe {
     /// Updates the Universe, bringing cells into and out of existence.
     pub fn tick(&mut self) {
         let _timer = Timer::new("Universe::tick");
-        let mut next = {
-            let _timer = Timer::new("allocate next cells");
-            self.cells.clone()
-        }; // future universe
-
         {
             let _timer = Timer::new("new generation");
             for row in 0..self.height {
@@ -109,32 +111,48 @@ impl Universe {
                     let live_neighbors = self.live_neighbor_count(row, col);
 
                     trace!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
-
-                    let next_cell = match (cell, live_neighbors) {
-                        // Rule 1: Any live cell with fewer than two neighbors dies.
-                        (Cell::Alive, x) if x < 2 => Cell::Dead,
-                        // Rule 2: Any live cell with two or three live neighbours
-                        // lives on to the next generation.
-                        (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-                        // Rule 3: Any live cell with more than three neighbours
-                        // dies.
-                        (Cell::Alive, x) if x > 3 => Cell::Dead,
-                        // Rule 4: Any dead cell with exactly three neighbours
-                        // becomes a live cell.
-                        (Cell::Dead, 3) => Cell::Alive,
-                        // All other cells remain in the same state.
-                        (otherwise, _) => otherwise,
-                    };
-
+                    let next_cell = Self::update_status(cell, live_neighbors);
                     trace!("it becomes {next_cell:?}");
 
-                    next[idx] = next_cell;
+                    self.old_cells[idx] = next_cell;
                 }
             }
         }
 
-        let _timer2 = Timer::new("free old cells");
-        self.cells = next;
+        let _timer2 = Timer::new("swap cell buffers");
+        mem::swap(&mut self.old_cells, &mut self.cells);
+    }
+
+    /// Updates the Universe, bringing cells into and out of existence.
+    pub fn tick_delta(&mut self) {
+        let _timer = Timer::new("Universe::tick_delta");
+        self.delta_alive.clear();
+        self.delta_dead.clear();
+        {
+            let _timer = Timer::new("new generation");
+            for row in 0..self.height {
+                for col in 0..self.width {
+                    let idx = self.get_index(row, col);
+                    let cell = self.cells[idx];
+                    let live_neighbors = self.live_neighbor_count(row, col);
+
+                    trace!("cell[{row}, {col}] is initially {cell:?} and has {live_neighbors} live neighbors");
+                    let next_cell = Self::update_status(cell, live_neighbors);
+                    trace!("it becomes {next_cell:?}");
+
+                    if cell != next_cell {
+                        let delta_buffer = match next_cell {
+                            Cell::Alive => &mut self.delta_alive,
+                            Cell::Dead => &mut self.delta_dead,
+                        };
+                        delta_buffer.push(row);
+                        delta_buffer.push(col);
+                    }
+                    self.old_cells[idx] = next_cell;
+                }
+            }
+        }
+        mem::swap(&mut self.old_cells, &mut self.cells);
     }
 
     pub fn width(&self) -> u32 {
@@ -168,6 +186,22 @@ impl Universe {
     /// can be done with: `idx = (row_num * width + col_num)`
     pub fn cells(&self) -> *const Cell {
         self.cells.as_ptr()
+    }
+
+    pub fn cells_born(&self) -> *const u32 {
+        self.delta_alive.as_ptr()
+    }
+
+    pub fn cells_died(&self) -> *const u32 {
+        self.delta_dead.as_ptr()
+    }
+
+    pub fn cells_born_count(&self) -> usize {
+        self.delta_alive.len() / 2
+    }
+
+    pub fn cells_died_count(&self) -> usize {
+        self.delta_dead.len() / 2
     }
 
     pub fn toggle_cell(&mut self, row: u32, column: u32) {
@@ -233,9 +267,27 @@ impl Universe {
 
         return count;
     }
+
+    fn update_status(cell: Cell, live_neighbors: u8) -> Cell {
+        match (cell, live_neighbors) {
+            // Rule 1: Any live cell with fewer than two neighbors dies.
+            (Cell::Alive, x) if x < 2 => Cell::Dead,
+            // Rule 2: Any live cell with two or three live neighbours
+            // lives on to the next generation.
+            (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
+            // Rule 3: Any live cell with more than three neighbours
+            // dies.
+            (Cell::Alive, x) if x > 3 => Cell::Dead,
+            // Rule 4: Any dead cell with exactly three neighbours
+            // becomes a live cell.
+            (Cell::Dead, 3) => Cell::Alive,
+            // All other cells remain in the same state.
+            (otherwise, _) => otherwise,
+        }
+    }
 }
 
-use std::fmt;
+use std::{fmt, mem};
 
 impl fmt::Display for Universe {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

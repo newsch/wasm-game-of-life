@@ -148,9 +148,16 @@ canvas.addEventListener("click", event => {
 
 function renderLoop(loop = true) {
     // debugger;
-    universe.tick();
+
+    // universe.tick();
+    // drawGrid();
+    // drawCells();
+
+    // console.log("Using delta calculations");
+    universe.tick_delta();
     drawGrid();
-    drawCells();
+    drawCellsDelta();
+    // drawCells();
 
     if (loop) {
         fps.render();
@@ -180,7 +187,7 @@ function drawGrid() {
 
 function getIndex(row, column) {
     return row * width + column;
-  };
+}
 
 function drawCells() {
     const cellsPtr = universe.cells();
@@ -227,7 +234,46 @@ function drawCells() {
     }
 
     ctx.stroke();
-};
+}
+
+function drawCellsDelta() {
+    const bornPtr = universe.cells_born();
+    const numBorn = universe.cells_born_count();
+    const bornCells = new Uint32Array(memory.buffer, bornPtr, numBorn * 2);
+
+    const diedPtr = universe.cells_died();
+    const numDied = universe.cells_died_count();
+    const diedCells = new Uint32Array(memory.buffer, diedPtr, numDied * 2);
+
+    // Alive cells
+    ctx.fillStyle = ALIVE_COLOR;
+    for (let i = 0; i < numBorn; i++) {
+        const row = bornCells[i*2];
+        const col = bornCells[i*2+1];
+        const idx = getIndex(row, col);
+
+        ctx.fillRect(
+          col * (CELL_SIZE + 1) + 1,
+          row * (CELL_SIZE + 1) + 1,
+          CELL_SIZE,
+          CELL_SIZE
+        );
+    }
+
+    // Dead cells
+    ctx.fillStyle = DEAD_COLOR;
+    for (let i = 0; i < numDied; i++) {
+        const row = diedCells[i*2];
+        const col = diedCells[i*2+1];
+
+        ctx.fillRect(
+          col * (CELL_SIZE + 1) + 1,
+          row * (CELL_SIZE + 1) + 1,
+          CELL_SIZE,
+          CELL_SIZE
+        );
+    }
+}
 
 drawGrid();
 drawCells();
