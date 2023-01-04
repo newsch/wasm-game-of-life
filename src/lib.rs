@@ -1,6 +1,9 @@
-mod utils;
 use log::trace;
+
+mod utils;
 use utils::Timer;
+mod parse;
+pub use parse::*;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -55,6 +58,10 @@ impl Universe {
     // TODO: random generation of initial layout with js-sys
     pub fn new(width: u32, height: u32) -> Universe {
         let cells = vec![Cell::Dead; (width * height) as usize];
+        Self::of_cells(width, height, cells)
+    }
+
+    pub fn of_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
         let old_cells = cells.clone();
 
         Universe {
@@ -65,6 +72,14 @@ impl Universe {
             delta_alive: Vec::new(),
             delta_dead: Vec::new(),
         }
+    }
+
+    fn of_grid(Grid { width, height, cells }: Grid) -> Universe {
+        Self::of_cells(width as u32, height as u32, cells)
+    }
+
+    pub fn reset_from_grid() {
+        todo!()
     }
 
     pub fn reset_blank(&mut self) {
