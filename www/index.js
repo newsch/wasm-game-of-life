@@ -51,7 +51,7 @@ const fps = new class {
 };
 
 const isPaused = () => {
-    return animationId === null;
+    return Renderer.isCanceled();
 };
 
 const playPauseBtn = document.getElementById("play-pause");
@@ -66,16 +66,15 @@ function play() {
     playPauseBtn.textContent = "⏸";
     // playPauseBtn.textContent = "⏯";
     stepBtn.enabled = false;
-    renderLoop();
+    Renderer.render();
     fps.reset();
 };
 
 function pause() {
     playPauseBtn.textContent = "▶";
     // playPauseBtn.textContent = "⏯";
-    cancelAnimationFrame(animationId);
+    Renderer.cancel();
     stepBtn.enabled = true;
-    animationId = null;
 }
 
 function reset(pattern) {
@@ -117,7 +116,7 @@ playPauseBtn.addEventListener("click", () => {
 });
 
 stepBtn.addEventListener("click", () => {
-    renderLoop(false);
+    Renderer.render({loop:false});
 });
 
 patternSlt.addEventListener("change", event => {
@@ -172,24 +171,60 @@ canvas.addEventListener("click", event => {
     drawCells();
 });
 
-function renderLoop(loop = true) {
-    // debugger;
-
-    // universe.tick();
-    // drawGrid();
-    // drawCells();
-
-    // console.log("Using delta calculations");
-    universe.tick_delta();
-    drawGrid();
-    drawCellsDelta();
-    // drawCells();
-
-    if (loop) {
-        fps.render();
-        animationId = requestAnimationFrame(renderLoop);
+const Renderer = new class {
+    constructor() {
+        this.previousTimestamp;
+        this.animationId;
+        this.method = "delta";
+        // this.method = "full";
     }
-}
+
+    render({ loop=true, timestamp }={}) {
+        // debugger;
+
+        switch (this.method) {
+            case "full":
+                universe.tick();
+                break;
+            case "delta":
+                universe.tick_delta();
+                break;
+            default:
+                throw `Unknown method: ${this.method}`;
+        }
+
+        // only draw on new frame
+        if (timestamp === undefined || timestamp !== this.previousTimestamp) {
+            drawGrid();
+            switch (this.method) {
+                case "full":
+                    drawCells();
+                    break;
+                case "delta":
+                    drawCellsDelta();
+                    break;
+                default:
+                    throw `Unknown method: ${this.method}`;
+            }
+        }
+
+        if (loop) {
+            fps.render();
+            this.animationId = requestAnimationFrame(timestamp => this.render({timestamp}));
+        }
+
+        this.previousTimestamp = timestamp;
+    }
+
+    cancel() {
+        cancelAnimationFrame(this.animationId);
+        this.animationId = null;
+    }
+
+    isCanceled() {
+        return this.animationId === null;
+    }
+};
 
 function drawGrid() {
     ctx.beginPath();
@@ -303,4 +338,4 @@ function drawCellsDelta() {
 
 drawGrid();
 drawCells();
-// requestAnimationFrame(renderLoop);
+// Renderer.render();
