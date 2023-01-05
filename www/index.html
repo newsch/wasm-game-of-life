@@ -26,6 +26,10 @@
           height: 1.8rem;
           min-width: 1.8rem;
         }
+
+        #controls #height, #width {
+          width: 3rem;
+        }
       </style>
   </head>
   <body>
@@ -38,11 +42,15 @@
             <option value="random">Random</option>
             <option value="custom">Custom</option>
         </select>
+        <label>size:</label>
+        <input type="number" id="width" value="64" min="1"/>
+        <label>by</label>
+        <input type="number" id="height" value="64" min="1"/>
         <button id="reset">reset</button>
         <button id="play-pause">⏯</button>
         <button id="step">step</button>
+        <br>
         <textarea id="custom-txt" disabled placeholder="Enter custom pattern..." rows="5" cols="80"></textarea>
-        <button id="step">step</button>
     </form>
 
     <script src="./bootstrap.js"></script>

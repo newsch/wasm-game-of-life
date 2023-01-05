@@ -2,8 +2,8 @@ import { Universe, Cell } from "wasm-game-of-life";
 import { memory } from "wasm-game-of-life/wasm_game_of_life_bg";
 
 const CELL_SIZE = 5;  // width/height in pixels
-// const GRID_COLOR = "#CCCCCC";
-const GRID_COLOR = "#FFFFFF";
+const GRID_COLOR = "#EEEEEE";
+// const GRID_COLOR = "#FFFFFF";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
@@ -59,6 +59,8 @@ const stepBtn = document.getElementById("step");
 const patternSlt = document.getElementById("pattern-select");
 const resetBtn = document.getElementById("reset");
 const customTxt = document.getElementById("custom-txt");
+const widthEl = document.getElementById("width");
+const heightEl = document.getElementById("height");
 
 function play() {
     playPauseBtn.textContent = "⏸";
@@ -77,6 +79,12 @@ function pause() {
 }
 
 function reset(pattern) {
+    if (pattern !== "custom" && (widthEl.value !== width || heightEl.value !== height)) {
+        // resize based on dimensions input
+        universe.set_width(widthEl.value);
+        universe.set_height(heightEl.value);
+    }
+
     switch(pattern) {
         case "fancy":
             universe.reset_fancy();
@@ -94,6 +102,7 @@ function reset(pattern) {
         default:
             throw "unknown pattern: " + pattern;
     }
+
     resize_canvas();
     drawGrid();
     drawCells();

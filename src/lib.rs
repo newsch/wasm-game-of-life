@@ -63,7 +63,8 @@ impl Universe {
 
     #[cfg(feature = "wasm")]
     pub fn reset_from_file(&mut self, f: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
-        *self = Self::of_file(f).map_err(|e| wasm_bindgen::JsValue::from_str(e.to_string().as_ref()))?;
+        *self = Self::of_file(f)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(e.to_string().as_ref()))?;
         Ok(())
     }
 
@@ -267,6 +268,7 @@ impl Universe {
     #[inline]
     fn make_cells(&mut self) {
         self.cells = (0..self.width * self.height).map(|_i| Cell::Dead).collect();
+        self.old_cells = self.cells.clone();
     }
 
     fn live_neighbor_count(&self, row: u32, col: u32) -> u8 {
