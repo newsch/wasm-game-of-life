@@ -142,12 +142,7 @@ impl Universe {
                     trace!("it becomes {next_cell:?}");
 
                     if cell != next_cell {
-                        let delta_buffer = match next_cell {
-                            Cell::Alive => &mut self.delta_alive,
-                            Cell::Dead => &mut self.delta_dead,
-                        };
-                        delta_buffer.push(row);
-                        delta_buffer.push(col);
+                        self.buffer_delta(row, col, next_cell);
                     }
                     self.old_cells[idx] = next_cell;
                 }
@@ -208,6 +203,7 @@ impl Universe {
     pub fn toggle_cell(&mut self, row: u32, column: u32) {
         let idx = self.get_index(row, column);
         self.cells[idx].toggle();
+        self.buffer_delta(row, column, self.cells[idx]);
     }
 }
 
@@ -260,6 +256,13 @@ impl Universe {
         debug_assert!(row < self.height);
         debug_assert!(col < self.width);
         (row * self.width + col) as usize
+    }
+
+    fn get_rowcol(&self, index: usize) -> (u32, u32) {
+        debug_assert!(index < self.cells.len());
+        let row = index / self.cells.len();
+        let col = index % self.cells.len();
+        (row as u32, col as u32)
     }
 
     /// Sets the cells buffer to match height and width dimensions.
@@ -315,6 +318,15 @@ impl Universe {
             // All other cells remain in the same state.
             (otherwise, _) => otherwise,
         }
+    }
+
+    fn buffer_delta(&mut self, row: u32, col: u32, cell: Cell) {
+        let delta_buffer = match cell {
+            Cell::Alive => &mut self.delta_alive,
+            Cell::Dead => &mut self.delta_dead,
+        };
+        delta_buffer.push(row);
+        delta_buffer.push(col);
     }
 }
 
