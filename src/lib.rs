@@ -61,25 +61,10 @@ impl Universe {
         Self::of_cells(width, height, cells)
     }
 
-    pub fn of_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
-        let old_cells = cells.clone();
-
-        Universe {
-            width,
-            height,
-            cells,
-            old_cells,
-            delta_alive: Vec::new(),
-            delta_dead: Vec::new(),
-        }
-    }
-
-    fn of_grid(Grid { width, height, cells }: Grid) -> Universe {
-        Self::of_cells(width as u32, height as u32, cells)
-    }
-
-    pub fn reset_from_grid() {
-        todo!()
+    #[cfg(feature = "wasm")]
+    pub fn reset_from_file(&mut self, f: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
+        *self = Self::of_file(f).map_err(|e| wasm_bindgen::JsValue::from_str(e.to_string().as_ref()))?;
+        Ok(())
     }
 
     pub fn reset_blank(&mut self) {
@@ -227,6 +212,35 @@ impl Universe {
 
 /// non-JS-exported methods
 impl Universe {
+    pub fn of_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
+        let old_cells = cells.clone();
+
+        Universe {
+            width,
+            height,
+            cells,
+            old_cells,
+            delta_alive: Vec::new(),
+            delta_dead: Vec::new(),
+        }
+    }
+
+    fn of_grid(
+        Grid {
+            width,
+            height,
+            cells,
+        }: Grid,
+    ) -> Result<Self, Box<dyn Error>> {
+        Ok(Self::of_cells(width.try_into()?, height.try_into()?, cells))
+    }
+
+    pub fn of_file(f: &[u8]) -> Result<Self, Box<dyn Error>> {
+        let f = std::str::from_utf8(f)?;
+        let grid = parse_plaintext(f).map_err(|e| e.to_string())?;
+        Self::of_grid(grid)
+    }
+
     /// Get the dead and alive values of the entire universe.
     pub fn get_cells(&self) -> &[Cell] {
         &self.cells
@@ -302,7 +316,7 @@ impl Universe {
     }
 }
 
-use std::{fmt, mem};
+use std::{error::Error, fmt, mem};
 
 impl fmt::Display for Universe {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -8,8 +8,8 @@ use nom::{
     character::complete::{char, line_ending, not_line_ending},
     combinator::{eof, opt, peek, value},
     error::{context, Error},
-    multi::{many0, many1, separated_list0},
-    sequence::{delimited, pair, separated_pair, terminated},
+    multi::{many1, separated_list0},
+    sequence::{delimited, pair},
     Finish, IResult, Parser,
 };
 

@@ -58,6 +58,7 @@ const playPauseBtn = document.getElementById("play-pause");
 const stepBtn = document.getElementById("step");
 const patternSlt = document.getElementById("pattern-select");
 const resetBtn = document.getElementById("reset");
+const customTxt = document.getElementById("custom-txt");
 
 function play() {
     playPauseBtn.textContent = "⏸";
@@ -86,9 +87,16 @@ function reset(pattern) {
         case "blank":
             universe.reset_blank();
             break;
+        case "custom":
+            const file = new TextEncoder().encode(customTxt.value);
+            universe.reset_from_file(file);
+            break;
         default:
             throw "unknown pattern: " + pattern;
     }
+    resize_canvas();
+    drawGrid();
+    drawCells();
 }
 
 playPauseBtn.addEventListener("click", () => {
@@ -105,27 +113,36 @@ stepBtn.addEventListener("click", () => {
 
 patternSlt.addEventListener("change", event => {
     const pattern = event.target.value;
+    customTxt.disabled = (pattern !== "custom");
     reset(pattern);
-    drawGrid();
-    drawCells();
 });
 
 resetBtn.addEventListener("click", () => {
     const pattern = patternSlt.value;
     reset(pattern);
-    drawGrid();
-    drawCells();
 });
 
 const pre = document.getElementById("game-of-life-canvas");
 const universe = Universe.new(64, 64);
 universe.reset_fancy();
-const width = universe.width();
-const height = universe.height();
+
+let width;
+let height;
 
 const canvas = document.getElementById("game-of-life-canvas");
-canvas.height = (CELL_SIZE + 1) * height + 1;
-canvas.width = (CELL_SIZE + 1) * width + 1;
+
+function resize_canvas() {
+    const new_width = universe.width();
+    const new_height = universe.height();
+    if (new_width !== width || new_height !== height) {
+        width = new_width;
+        height = new_height;
+        canvas.height = (CELL_SIZE + 1) * height + 1;
+        canvas.width = (CELL_SIZE + 1) * width + 1;
+    }
+}
+
+resize_canvas();
 
 const ctx = canvas.getContext("2d");
 
