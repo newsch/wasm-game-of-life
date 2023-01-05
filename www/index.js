@@ -97,8 +97,13 @@ function reset(pattern) {
             universe.reset_blank();
             break;
         case "custom":
-            const file = new TextEncoder().encode(customTxt.value);
-            universe.reset_from_file(file);
+            try {
+                const file = new TextEncoder().encode(customTxt.value);
+                universe.reset_from_file(file);
+            } catch(e) {
+                customTxt.setCustomValidity('Parse error: ' + e);
+                customTxt.reportValidity();
+            }
             break;
         default:
             throw "unknown pattern: " + pattern;
