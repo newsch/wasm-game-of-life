@@ -30,6 +30,33 @@
         #controls #height, #width {
           width: 3rem;
         }
+
+        #speed-grp {
+            display: flex;
+            gap: 1rem;
+            max-width: 25rem;
+        }
+
+        #speed-grp input[type="number"] {
+          flex: 0 0;
+          min-width: 3rem;
+          max-height: 1.1rem;
+        }
+
+        #speed-grp div {
+          flex: 1 0;
+          width: 100%;
+        }
+
+        #speed-grp input[type="range"] {
+          width: 100%;
+        }
+
+        #speed-grp datalist {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+        }
       </style>
   </head>
   <body>
@@ -49,6 +76,20 @@
         <button id="reset">reset</button>
         <button id="play-pause">⏯</button>
         <button id="step">step</button>
+        <fieldset id="speed-grp">
+            <legend>Target Speed (Ticks/s):</legend>
+                <input type="number" id="speed-num" min="0" max="100"/>
+            <div>
+            <input type="range" id="speed-range" min="0" max="100" step="5" list="speed-markers"/>
+            <datalist id="speed-markers">
+              <option value="0" label="min"></option>
+              <option value="25"></option>
+              <option value="50"></option>
+              <option value="75"></option>
+              <option value="100" label="max"></option>
+            </datalist>
+            </div>
+        </fieldset>
         <br>
         <textarea id="custom-txt" disabled placeholder="Enter custom pattern..." rows="5" cols="80"></textarea>
     </form>

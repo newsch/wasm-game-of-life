@@ -51,7 +51,7 @@ const fps = new class {
 };
 
 const isPaused = () => {
-    return Renderer.isCanceled();
+    return !Renderer.isRunning();
 };
 
 const playPauseBtn = document.getElementById("play-pause");
@@ -61,12 +61,14 @@ const resetBtn = document.getElementById("reset");
 const customTxt = document.getElementById("custom-txt");
 const widthEl = document.getElementById("width");
 const heightEl = document.getElementById("height");
+const speedNum = document.getElementById("speed-num");
+const speedRange = document.getElementById("speed-range");
 
 function play() {
     playPauseBtn.textContent = "⏸";
     // playPauseBtn.textContent = "⏯";
     stepBtn.enabled = false;
-    Renderer.render();
+    Renderer.loop();
     fps.reset();
 };
 
@@ -116,7 +118,7 @@ playPauseBtn.addEventListener("click", () => {
 });
 
 stepBtn.addEventListener("click", () => {
-    Renderer.render({loop:false});
+    Renderer.step();
 });
 
 patternSlt.addEventListener("change", event => {
@@ -130,7 +132,46 @@ resetBtn.addEventListener("click", () => {
     reset(pattern);
 });
 
-const pre = document.getElementById("game-of-life-canvas");
+speedNum.addEventListener("change", event => {
+    const log = event.target.value;
+    speedRange.value = speedFromLog(log);
+    Renderer.goalMsPerTick = speedToMsPerTick(log);
+    if (Renderer.isRunning()) {
+        Renderer.cancel();
+        Renderer.loop();
+    }
+});
+
+speedRange.addEventListener("input", event => {
+    const lin = event.target.value;
+    const log = Math.round(speedToLog(lin) * 10) / 10;
+    speedNum.value = log;
+    Renderer.goalMsPerTick = speedToMsPerTick(log);
+    if (Renderer.isRunning()) {
+        Renderer.cancel();
+        Renderer.loop();
+    }
+});
+
+const linMin = 0.1;
+const linMax = 100;
+const logMin = Math.log(0.5);
+const logMax = Math.log(100);
+const speedLinLogScale = (logMax - logMin) / (linMax - linMin);
+
+function speedToLog(lin) {
+    return Math.exp(logMin + speedLinLogScale*(lin-linMin));
+}
+
+function speedFromLog(log) {
+    return (Math.log(log)-logMin)/speedLinLogScale + linMin;
+}
+
+function speedToMsPerTick(speed) {
+    // speed is ticks per second
+    return 1000 / speed;
+}
+
 const universe = Universe.new(64, 64);
 universe.reset_fancy();
 
@@ -167,21 +208,20 @@ canvas.addEventListener("click", event => {
     const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
 
     universe.toggle_cell(row, col);
-    drawGrid();
-    drawCells();
+    Renderer.redraw();
 });
 
 const Renderer = new class {
     constructor() {
         this.previousTimestamp;
         this.animationId;
+        this.timeoutId;
         this.method = "delta";
         // this.method = "full";
+        this.goalMsPerTick = -Infinity;
     }
 
-    render({ loop=true, timestamp }={}) {
-        // debugger;
-
+    calculate() {
         switch (this.method) {
             case "full":
                 universe.tick();
@@ -192,10 +232,9 @@ const Renderer = new class {
             default:
                 throw `Unknown method: ${this.method}`;
         }
+    }
 
-        // only draw on new frame
-        if (timestamp === undefined || timestamp !== this.previousTimestamp) {
-            drawGrid();
+    redraw() {
             switch (this.method) {
                 case "full":
                     drawCells();
@@ -206,23 +245,47 @@ const Renderer = new class {
                 default:
                     throw `Unknown method: ${this.method}`;
             }
+            // drawGrid();
+    }
+
+    loop(timestamp=null) {
+        // debugger;
+
+        // skip if no tick needed
+        if (timestamp) {
+            const difference = timestamp - this.previousTimestamp;
+            if (difference < this.goalMsPerTick) {
+                this.timeoutId = setTimeout(() => this.loop(performance.now()), this.goalMsPerTick - difference);
+                return;
+            }
         }
 
-        if (loop) {
-            fps.render();
-            this.animationId = requestAnimationFrame(timestamp => this.render({timestamp}));
+        this.calculate();
+
+        // only draw on new frame
+        if (!timestamp || timestamp !== this.previousTimestamp) {
+            this.redraw();
         }
 
         this.previousTimestamp = timestamp;
+        fps.render();
+        this.animationId = requestAnimationFrame(timestamp => this.loop(timestamp));
+    }
+
+    step() {
+        this.calculate();
+        this.redraw();
     }
 
     cancel() {
         cancelAnimationFrame(this.animationId);
         this.animationId = null;
+        clearTimeout(this.timeoutId);
+        this.timeoutId = null;
     }
 
-    isCanceled() {
-        return this.animationId === null;
+    isRunning() {
+        return this.animationId || this.timeoutId;
     }
 };
 
@@ -338,4 +401,4 @@ function drawCellsDelta() {
 
 drawGrid();
 drawCells();
-// Renderer.render();
+// Renderer.loop();
