@@ -63,6 +63,8 @@ const widthEl = document.getElementById("width");
 const heightEl = document.getElementById("height");
 const speedNum = document.getElementById("speed-num");
 const speedRange = document.getElementById("speed-range");
+const customUrlTxt = document.getElementById("custom-url");
+const customUrlBtn = document.getElementById("custom-url-submit");
 
 function play() {
     playPauseBtn.textContent = "⏸";
@@ -101,9 +103,11 @@ function reset(pattern) {
                 const file = new TextEncoder().encode(customTxt.value);
                 universe.reset_from_file(file);
             } catch(e) {
+                console.error(e);
                 customTxt.setCustomValidity('Parse error: ' + e);
                 customTxt.reportValidity();
             }
+            customTxt.setCustomValidity('');
             break;
         default:
             throw "unknown pattern: " + pattern;
@@ -128,7 +132,7 @@ stepBtn.addEventListener("click", () => {
 
 patternSlt.addEventListener("change", event => {
     const pattern = event.target.value;
-    customTxt.disabled = (pattern !== "custom");
+    // customTxt.disabled = (pattern !== "custom");
     reset(pattern);
 });
 
@@ -156,6 +160,23 @@ speedRange.addEventListener("input", event => {
         Renderer.cancel();
         Renderer.loop();
     }
+});
+
+customUrlBtn.addEventListener("click", async function (event) {
+    const url = customUrlTxt.value;
+    try {
+        const resp = await fetch(url);
+        const text = resp.text();
+            // .then(r => r.arrayBuffer())
+            // .then(b => new Uint8Array(b));
+         customTxt.value = text;
+         debugger
+    } catch(e) {
+        console.error(e);
+        customUrlTxt.setCustomValidity('Error fetching url: ' + e);
+        customUrlTxt.reportValidity();
+    }
+    customUrlTxt.setCustomValidity('');
 });
 
 const linMin = 0.1;
