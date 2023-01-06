@@ -12,6 +12,8 @@ use crate::Cell;
 
 mod plaintext;
 pub use plaintext::*;
+mod rle;
+pub use rle::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Immutable pattern storage
@@ -58,6 +60,34 @@ impl Display for Grid {
         }
         Ok(())
     }
+}
+
+trait LifeParser {
+    /// File extensions that may indicate the parser can be used
+    // const MIME_TYPES: [&'static str];
+    fn file_extensions(&self) -> &[&str];
+
+    /// Quick, low-overhead method to detect if the file is the format
+    ///
+    /// Must return `true` for any input for which [`parse`] returns `Ok(_)`.
+    // TODO: decide on goals here
+    fn sniff(&self, input: &str) -> bool {
+        self.parse(input).is_ok()
+        // None
+    }
+
+    fn parse(&self, input: &str) -> Result<Grid, ParseError>;
+}
+
+const PARSERS: &[&'static dyn LifeParser] = &[&PlaintextParser(), &RleParser()];
+
+pub fn parse_str(input: &str) -> Result<Grid, ParseError> {
+    for parser in PARSERS {
+        if parser.sniff(input) {
+            return parser.parse(input);
+        }
+    }
+    panic!() // TODO: error
 }
 
 /// Drop-in replacement to IResult that holds VerboseErrors

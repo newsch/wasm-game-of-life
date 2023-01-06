@@ -14,6 +14,25 @@ use nom::{
     Finish, Parser,
 };
 
+pub struct PlaintextParser();
+
+const FILE_EXTENSIONS: &'static [&'static str] = &["cells"];
+
+impl LifeParser for PlaintextParser {
+
+    fn file_extensions(&self) -> &[&str] {
+        FILE_EXTENSIONS
+    }
+
+    fn sniff(&self, input: &str) -> bool {
+        input.starts_with(['#', 'x'])
+    }
+
+    fn parse(&self, input: &str) -> Result<Grid, ParseError> {
+        parse_plaintext(input)
+    }
+}
+
 pub fn parse_plaintext(input: &str) -> Result<Grid, ParseError> {
     let (_rest, rows) = plaintext(input)
         .finish()
