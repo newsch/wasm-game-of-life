@@ -6,7 +6,9 @@ mod parse;
 pub use parse::*;
 
 #[cfg(feature = "wasm")]
-use wasm_bindgen::prelude::*;
+use js_sys::TypeError;
+#[cfg(feature = "wasm")]
+use wasm_bindgen::{prelude::*, JsValue};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -22,15 +24,6 @@ pub enum Cell {
     Alive = 1,
 }
 
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EdgeBehavior {
-    Wrap,
-    Dead,
-    Alive,
-    // Grow,
-}
-
 impl Cell {
     fn toggle(&mut self) {
         *self = match *self {
@@ -38,6 +31,15 @@ impl Cell {
             Cell::Alive => Cell::Dead,
         }
     }
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EdgeBehavior {
+    Wrap,
+    Dead,
+    Alive,
+    // Grow,
 }
 
 // TODO: use fixedbitset for storing cells
@@ -72,9 +74,8 @@ impl Universe {
     }
 
     #[cfg(feature = "wasm")]
-    pub fn reset_from_file(&mut self, f: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
-        *self = Self::of_file(f)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(e.to_string().as_ref()))?;
+    pub fn reset_from_file(&mut self, f: &[u8]) -> Result<(), JsValue> {
+        *self = Self::of_file(f).map_err(|e| TypeError::new(e.to_string().as_ref()))?;
         Ok(())
     }
 
@@ -161,14 +162,17 @@ impl Universe {
         mem::swap(&mut self.old_cells, &mut self.cells);
     }
 
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter))]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter))]
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    #[cfg_attr(feature = "wasm", wasm_bindgen(setter))]
     /// Set the width of the universe.
     ///
     /// Resets all cells to the dead state.
@@ -177,12 +181,23 @@ impl Universe {
         self.make_cells();
     }
 
+    #[cfg_attr(feature = "wasm", wasm_bindgen(setter))]
     /// Set the height of the universe.
     ///
     /// Resets all cells to the dead state.
     pub fn set_height(&mut self, height: u32) {
         self.height = height;
         self.make_cells();
+    }
+
+    #[cfg_attr(feature = "wasm", wasm_bindgen(getter))]
+    pub fn edge_behavior(&self) -> EdgeBehavior {
+        self.edge_behavior
+    }
+
+    #[cfg_attr(feature = "wasm", wasm_bindgen(setter))]
+    pub fn set_edge_behavior(&mut self, edge_behavior: EdgeBehavior) {
+        self.edge_behavior = edge_behavior;
     }
 
     /// Returns a pointer to the cells buffer.
@@ -229,7 +244,7 @@ impl Universe {
             old_cells,
             delta_alive: Vec::new(),
             delta_dead: Vec::new(),
-            edge_behavior: EdgeBehavior::Dead,
+            edge_behavior: EdgeBehavior::Wrap,
         }
     }
 

@@ -1,4 +1,4 @@
-import { Universe, Cell } from "wasm-game-of-life";
+import { Universe, Cell, EdgeBehavior } from "wasm-game-of-life";
 import { memory } from "wasm-game-of-life/wasm_game_of_life_bg";
 
 const CELL_SIZE = 5;  // width/height in pixels
@@ -65,6 +65,7 @@ const speedNum = document.getElementById("speed-num");
 const speedRange = document.getElementById("speed-range");
 const customUrlTxt = document.getElementById("custom-url");
 const customUrlBtn = document.getElementById("custom-url-submit");
+const edgeBehaviorSlt = document.getElementById("edge-behavior");
 
 function play() {
     playPauseBtn.textContent = "⏸";
@@ -84,8 +85,8 @@ function pause() {
 function reset(pattern) {
     if (pattern !== "custom" && (widthEl.value !== width || heightEl.value !== height)) {
         // resize based on dimensions input
-        universe.set_width(widthEl.value);
-        universe.set_height(heightEl.value);
+        universe.width = widthEl.value;
+        universe.height = heightEl.value;
     }
 
     switch(pattern) {
@@ -113,6 +114,9 @@ function reset(pattern) {
             throw "unknown pattern: " + pattern;
     }
 
+    // TODO: update or persist edge behavior
+    edgeBehaviorSlt.value = "wrap";
+
     resize_canvas();
     drawGrid();
     drawCells();
@@ -134,6 +138,25 @@ patternSlt.addEventListener("change", event => {
     const pattern = event.target.value;
     // customTxt.disabled = (pattern !== "custom");
     reset(pattern);
+});
+
+edgeBehaviorSlt.addEventListener("change", event => {
+    const behavior = event.target.value;
+    let b
+    switch (behavior) {
+        case "wrap":
+            b = EdgeBehavior.Wrap;
+            break;
+        case "dead":
+            b = EdgeBehavior.Dead;
+            break;
+        case "alive":
+            b = EdgeBehavior.Alive;
+            break;
+        default:
+            throw new TypeError("Unknown edge behavior: " + behavior);
+    }
+    universe.edge_behavior = b;
 });
 
 resetBtn.addEventListener("click", () => {
@@ -207,8 +230,8 @@ let height;
 const canvas = document.getElementById("game-of-life-canvas");
 
 function resize_canvas() {
-    const new_width = universe.width();
-    const new_height = universe.height();
+    const new_width = universe.width;
+    const new_height = universe.height;
     if (new_width !== width || new_height !== height) {
         width = new_width;
         height = new_height;
