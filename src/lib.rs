@@ -22,6 +22,15 @@ pub enum Cell {
     Alive = 1,
 }
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EdgeBehavior {
+    Wrap,
+    Dead,
+    Alive,
+    // Grow,
+}
+
 impl Cell {
     fn toggle(&mut self) {
         *self = match *self {
@@ -40,6 +49,7 @@ pub struct Universe {
     old_cells: Vec<Cell>,
     delta_alive: Vec<u32>,
     delta_dead: Vec<u32>,
+    edge_behavior: EdgeBehavior,
 }
 
 #[cfg(feature = "wasm")]
@@ -219,6 +229,7 @@ impl Universe {
             old_cells,
             delta_alive: Vec::new(),
             delta_dead: Vec::new(),
+            edge_behavior: EdgeBehavior::Dead,
         }
     }
 
@@ -275,12 +286,17 @@ impl Universe {
     }
 
     fn live_neighbor_count(&self, row: u32, col: u32) -> u8 {
+        match self.edge_behavior {
+            EdgeBehavior::Wrap => self.live_neighbor_count_wrapping(row, col),
+            EdgeBehavior::Dead => self.live_neighbor_count_fixed(row, col, Cell::Dead),
+            EdgeBehavior::Alive => self.live_neighbor_count_fixed(row, col, Cell::Alive),
+        }
+    }
+
+    fn live_neighbor_count_wrapping(&self, row: u32, col: u32) -> u8 {
         let north = if row == 0 { self.height - 1 } else { row - 1 };
-
         let south = if row == self.height - 1 { 0 } else { row + 1 };
-
         let west = if col == 0 { self.width - 1 } else { col - 1 };
-
         let east = if col == self.width - 1 { 0 } else { col + 1 };
 
         let neighbors = [
@@ -297,6 +313,34 @@ impl Universe {
         let count = neighbors
             .into_iter()
             .map(|(r, c)| self.cells[self.get_index(r, c)] as u8)
+            .sum();
+
+        return count;
+    }
+
+    fn live_neighbor_count_fixed(&self, row: u32, col: u32, boundary: Cell) -> u8 {
+        let north = (row != 0).then_some(row - 1);
+        let south = (row != self.height - 1).then_some(row + 1);
+        let west = (col != 0).then_some(col - 1);
+        let east = (col != self.width - 1).then_some(col + 1);
+
+        let neighbors = [
+            (north, west),
+            (north, Some(col)),
+            (north, east),
+            (Some(row), west),
+            (Some(row), east),
+            (south, west),
+            (south, Some(col)),
+            (south, east),
+        ];
+
+        let count = neighbors
+            .into_iter()
+            .map(|pair| match pair {
+                (Some(r), Some(c)) => self.cells[self.get_index(r, c)] as u8,
+                _ => boundary as u8,
+            })
             .sum();
 
         return count;
