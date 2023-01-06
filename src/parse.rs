@@ -7,10 +7,10 @@ use nom::{
     branch::alt,
     character::complete::{char, line_ending, not_line_ending},
     combinator::{eof, opt, peek, value},
-    error::{context, Error},
+    error::{context, convert_error, VerboseError},
     multi::{many1, separated_list0},
     sequence::{delimited, pair},
-    Finish, IResult, Parser,
+    Err, Finish, Parser,
 };
 
 use crate::Cell;
@@ -61,8 +61,32 @@ impl Display for Grid {
     }
 }
 
-pub fn parse_plaintext(input: &str) -> Result<Grid, Error<&str>> {
-    let (_rest, rows) = plaintext(input).finish()?;
+#[derive(Debug, Clone, PartialEq)]
+/// Wrapper of VerboseError pretty printing
+pub struct ParseError(String);
+
+impl ParseError {
+    fn new(error: VerboseError<&str>, source: &str) -> Self {
+        // convert to owned string (.to_owned() doesn't seem to work?)
+        Self(format!(
+            "Error parsing input:\n{}",
+            convert_error(source, error)
+        ))
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub fn parse_plaintext(input: &str) -> Result<Grid, ParseError> {
+    let (_rest, rows) = plaintext(input)
+        .finish()
+        .map_err(|e| ParseError::new(e, input))?;
     let grid = normalize_rows(rows);
     Ok(grid)
 }
@@ -86,7 +110,10 @@ fn normalize_rows(rows: Vec<Vec<Cell>>) -> Grid {
     grid
 }
 
-fn plaintext(i: &str) -> IResult<&str, Vec<Vec<Cell>>> {
+/// Drop-in replacement to IResult that holds VerboseErrors
+type VIResult<I, O, E = VerboseError<I>> = Result<(I, O), Err<E>>;
+
+fn plaintext(i: &str) -> VIResult<&str, Vec<Vec<Cell>>> {
     let comments = context("comments", separated_list0(line_ending, bang_comment));
     let cell_rows = context(
         "cells",
@@ -95,23 +122,23 @@ fn plaintext(i: &str) -> IResult<&str, Vec<Vec<Cell>>> {
     delimited(
         comments.and(line_ending),
         cell_rows,
-        opt(line_ending).and(eof),
+        context("end of file", opt(line_ending).and(eof)),
     )(i)
 }
 
-fn cell_row(i: &str) -> IResult<&str, Vec<Cell>> {
+fn cell_row(i: &str) -> VIResult<&str, Vec<Cell>> {
     let alive = value(Cell::Alive, char('O'));
     let dead = value(Cell::Dead, char('.'));
     let cell = alt((alive, dead));
-    many1(cell)(i)
+    context("cell row", many1(cell))(i)
 }
 
-fn empty_cell_row(i: &str) -> IResult<&str, Vec<Cell>> {
-    value(Vec::new(), peek(line_ending))(i)
+fn empty_cell_row(i: &str) -> VIResult<&str, Vec<Cell>> {
+    context("empty cell row", value(Vec::new(), peek(line_ending)))(i)
 }
 
-fn bang_comment(i: &str) -> IResult<&str, ()> {
-    value((), pair(char('!'), not_line_ending))(i)
+fn bang_comment(i: &str) -> VIResult<&str, ()> {
+    context("comment", value((), pair(char('!'), not_line_ending)))(i)
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         width,
         height,
         cells,
-    } = parse_plaintext(&contents).map_err(|e| e.to_string())?;
+    } = parse_plaintext(&contents)?;
     let mut universe = Universe::of_cells(width.try_into()?, height.try_into()?, cells);
 
     for _ in 0..10 {

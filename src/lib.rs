@@ -260,7 +260,7 @@ impl Universe {
 
     pub fn of_file(f: &[u8]) -> Result<Self, Box<dyn Error>> {
         let f = std::str::from_utf8(f)?;
-        let grid = parse_plaintext(f).map_err(|e| e.to_string())?;
+        let grid = parse_plaintext(f)?;
         Self::of_grid(grid)
     }
 
