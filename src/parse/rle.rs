@@ -8,28 +8,28 @@ use std::{iter::repeat, str::FromStr};
 
 use nom::{
     branch::alt,
+    bytes::complete::tag,
     character::complete::{
         alphanumeric1, char, digit1, line_ending, multispace0, not_line_ending, space0,
     },
-    combinator::{map, map_res, opt, peek, rest, value},
+    combinator::{eof, map, map_res, opt, peek, rest, value},
     error::{context, ErrorKind, FromExternalError},
-    multi::{separated_list0, separated_list1},
+    multi::{many0, separated_list0, separated_list1},
     sequence::{pair, preceded, separated_pair, terminated, tuple},
     Finish, Parser,
 };
 
 pub struct RleParser();
 
-    const FILE_EXTENSIONS: &'static [&'static str] = &["rle"];
+const FILE_EXTENSIONS: &'static [&'static str] = &["rle"];
 
 impl LifeParser for RleParser {
-
     fn file_extensions(&self) -> &[&str] {
         FILE_EXTENSIONS
     }
 
     fn sniff(&self, input: &str) -> bool {
-        input.starts_with(['!', '.', 'O'])
+        input.starts_with(['#', 'x'])
     }
 
     fn parse(&self, input: &str) -> Result<Grid, ParseError> {
@@ -38,7 +38,9 @@ impl LifeParser for RleParser {
 }
 
 pub fn parse_rle(input: &str) -> Result<Grid, ParseError> {
-    let (_rest, rle) = rle(input).finish().map_err(|e| ParseError::new(e, input))?;
+    let (_rest, rle) = context("rle", rle)(input)
+        .finish()
+        .map_err(|e| ParseError::new(e, input))?;
     let grid = rle
         .try_into()
         .map_err(|e| VerboseError::from_external_error(input, ErrorKind::Fail, e))
@@ -51,7 +53,7 @@ type RuleSet<'a> = (&'a str, &'a str);
 struct Rle {
     width: usize,
     height: usize,
-    cell_seq: Vec<Vec<(usize, Cell)>>,
+    tag_seq: Vec<(usize, char)>,
 }
 
 impl TryInto<Grid> for Rle {
@@ -61,28 +63,38 @@ impl TryInto<Grid> for Rle {
         let Rle {
             width,
             height,
-            cell_seq,
+            tag_seq,
         } = self;
 
-        // TODO: turn into error or handle softly...
-        assert!(cell_seq.len() <= height);
+        // TODO: turn panics into errors or handle softly...
+        // TODO: validate tag seq to size?
 
         let mut cells = Vec::with_capacity(width * height);
 
-        for line in cell_seq {
-            let start = cells.len();
-            for (i, state) in line {
-                for _ in 0..i {
-                    cells.push(state);
+        for (i, tag) in tag_seq {
+            let state = match tag {
+                '$' => {
+                    // TODO: if already at end of line, skip?
+                    for i in 0..i {
+                        // fill to end of line
+                        let row = cells.len() % width;
+                        if i == 0 && row == 0 {
+                            // already at end of line
+                            continue;
+                        }
+                        for _ in 0..width - row {
+                            cells.push(Cell::Dead);
+                        }
+                    }
+                    continue;
                 }
-            }
-            // fill to end of line
-            assert!(cells.len() >= start);
-            let pushed = cells.len() - start;
-            assert!(width >= pushed);
-            let rest = width - pushed;
-            for _ in 0..rest {
-                cells.push(Cell::Dead);
+                'o' => Cell::Alive,
+                'b' => Cell::Dead,
+                t => panic!("unexpected tag {t:?}"),
+            };
+
+            for _ in 0..i {
+                cells.push(state);
             }
         }
 
@@ -90,6 +102,8 @@ impl TryInto<Grid> for Rle {
         for _ in cells.len()..(width * height) {
             cells.push(Cell::Dead);
         }
+
+        assert_eq!(cells.len(), (width * height));
 
         Ok(Grid {
             width,
@@ -100,27 +114,31 @@ impl TryInto<Grid> for Rle {
 }
 
 fn rle(i: &str) -> VIResult<&str, Rle> {
-    let (i, _comments) = context("comments", separated_list0(line_ending, hash_comment))(i)?;
-    let (i, (width, height, _rule_set)) = terminated(header, line_ending)(i)?;
-    let (i, cell_seq) = cells(i)?;
-    let (i, _trailing_comments) = opt(preceded(line_ending, rest))(i)?;
+    let (i, _comments) = context(
+        "comments",
+        terminated(separated_list0(line_ending, hash_comment), line_ending),
+    )(i)?;
+    let (i, (width, height, _rule_set)) = context("header", terminated(header, line_ending))(i)?;
+    let (i, tag_seq) = context("cells", cells)(i)?;
+    let (i, _trailing_comments) =
+        context("trailing comments", opt(preceded(line_ending, rest)))(i)?;
 
     let rle = Rle {
         width,
         height,
-        cell_seq,
+        tag_seq,
     };
     Ok((i, rle))
 }
 
 fn hash_comment(i: &str) -> VIResult<&str, ()> {
-    context("comment", value((), pair(char('#'), not_line_ending)))(i)
+    context("comment", value((), pair(char('#'), opt(not_line_ending))))(i)
 }
 
 fn header(i: &str) -> VIResult<&str, (usize, usize, Option<RuleSet>)> {
-    let width = map_res(kv('x', digit1), usize::from_str);
-    let height = map_res(kv('y', digit1), usize::from_str);
-    let rule = kv('r', rule_set);
+    let width = context("width", map_res(kv(char('x'), digit1), usize::from_str));
+    let height = context("height", map_res(kv(char('y'), digit1), usize::from_str));
+    let rule = context("rule_set", kv(tag("rule"), rule_set));
 
     let (i, (w, h)) = separated_pair(width, char(','), height)(i)?;
     let (i, r) = opt(preceded(char(','), rule))(i)?;
@@ -129,27 +147,27 @@ fn header(i: &str) -> VIResult<&str, (usize, usize, Option<RuleSet>)> {
     Ok((i, (w, h, r)))
 }
 
-fn cell(i: &str) -> VIResult<&str, Cell> {
-    let alive = value(Cell::Alive, char('b'));
-    let dead = value(Cell::Dead, char('o'));
-    alt((alive, dead))(i)
+fn rle_tag(i: &str) -> VIResult<&str, char> {
+    let alive = char('b');
+    let dead = char('o');
+    let eol = char('$');
+    context("rle tag", alt((alive, dead, eol)))(i)
 }
 
-fn cells(i: &str) -> VIResult<&str, Vec<Vec<(usize, Cell)>>> {
-    let end_line = char('$');
-    let end_cells = char('!');
+fn cells(i: &str) -> VIResult<&str, Vec<(usize, char)>> {
+    let end_cells = context("cell end", char('!'));
 
-    let count = map_res(digit1, usize::from_str);
+    let count = context("count", map_res(digit1, usize::from_str));
 
-    let repeated_cell = count.and(cell);
-    let single_cell = map(cell, |v| (1, v));
+    let repeated_cell = count.and(rle_tag);
+    let single_cell = map(rle_tag, |v| (1, v));
 
-    let line = separated_list0(multispace0, repeated_cell.or(single_cell));
-
-    let mut lines = terminated(
-        separated_list1(end_line, line),
-        preceded(multispace0, end_cells),
+    let tags = context(
+        "rle tags",
+        many0(preceded(multispace0, repeated_cell.or(single_cell))),
     );
+
+    let mut lines = terminated(tags, preceded(multispace0, end_cells));
 
     lines(i)
 }
@@ -161,17 +179,37 @@ fn rule_set(i: &str) -> VIResult<&str, RuleSet> {
     )(i)
 }
 
-/// ` {key} = {value} ` with whitespace handling
-fn kv<'a, F, O>(key: char, value: F) -> impl FnMut(&'a str) -> VIResult<&'a str, O>
+/// ` {key} = {value} ` with whitespace handling, returning `value`
+fn kv<'a, K, V, KO, VO>(key: K, value: V) -> impl FnMut(&'a str) -> VIResult<&'a str, VO>
 where
-    F: FnMut(&'a str) -> VIResult<&'a str, O>,
+    K: FnMut(&'a str) -> VIResult<&'a str, KO>,
+    V: FnMut(&'a str) -> VIResult<&'a str, VO>,
 {
-    preceded(tuple((space0, char(key), space0, char('='), space0)), value)
+    context(
+        "key-value",
+        preceded(tuple((space0, key, space0, char('='), space0)), value),
+    )
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_parse() {
+        let input = //"#N p43 glider loop
+// #O Mike Playle
+// #C A period-43 oscillator based on a stable reflector
+// #C Discovered on 25 Apr 2013
+// #C www.conwaylife.com/wiki/P43_glider_loop
+"x = 65, y = 65, rule = B3/S23
+27b2o$27bobo$29bo4b2o$25b4ob2o2bo2bo$25bo2bo3bobob2o$28bobobobo$29b2ob!
+";
+
+        let result = parse_rle(input);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
 
     #[test]
     fn test_comment() {
@@ -183,7 +221,7 @@ mod test {
 
     #[test]
     fn test_header_no_rules() {
-        let input = " x = 1, y = 3\nblah blah";
+        let input = "x = 1, y = 3\nblah blah";
         let rest = "\nblah blah";
         let output = (1, 3, None);
         assert_eq!(Ok((rest, output)), header(input));
@@ -195,5 +233,17 @@ mod test {
         let rest = "\nblah blah";
         let output = (1, 3, Some(("3B", "4a")));
         assert_eq!(Ok((rest, output)), header(input));
+    }
+
+    #[test]
+    fn test_cells() {
+        use Cell::*;
+        let input = "2b2o$bobo!";
+        let rest = "";
+        let output = vec![
+            vec![(2, Alive), (2, Dead)],
+            vec![(1, Alive), (1, Dead), (1, Alive), (1, Dead)],
+        ];
+        assert_eq!(Ok((rest, output)), cells(input));
     }
 }

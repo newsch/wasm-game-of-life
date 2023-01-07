@@ -235,6 +235,7 @@ impl Universe {
 /// non-JS-exported methods
 impl Universe {
     pub fn of_cells(width: u32, height: u32, cells: Vec<Cell>) -> Universe {
+        assert_eq!(cells.len(), (width * height) as usize);
         let old_cells = cells.clone();
 
         Universe {
@@ -260,7 +261,7 @@ impl Universe {
 
     pub fn of_file(f: &[u8]) -> Result<Self, Box<dyn Error>> {
         let f = std::str::from_utf8(f)?;
-        let grid = parse_plaintext(f)?;
+        let grid = parse_str(f)?;
         Self::of_grid(grid)
     }
 

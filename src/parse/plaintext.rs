@@ -25,7 +25,7 @@ impl LifeParser for PlaintextParser {
     }
 
     fn sniff(&self, input: &str) -> bool {
-        input.starts_with(['#', 'x'])
+        input.starts_with(['!', '.', 'O'])
     }
 
     fn parse(&self, input: &str) -> Result<Grid, ParseError> {
@@ -34,7 +34,7 @@ impl LifeParser for PlaintextParser {
 }
 
 pub fn parse_plaintext(input: &str) -> Result<Grid, ParseError> {
-    let (_rest, rows) = plaintext(input)
+    let (_rest, rows) = context("plaintext", plaintext)(input)
         .finish()
         .map_err(|e| ParseError::new(e, input))?;
     let grid = normalize_rows(rows);
