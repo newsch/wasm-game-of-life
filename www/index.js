@@ -263,7 +263,7 @@ canvas.addEventListener("click", event => {
 
 const Renderer = new class {
     constructor() {
-        this.previousTimestamp;
+        this.previousTimestamp = 0;
         this.animationId;
         this.timeoutId;
         this.method = "delta";
@@ -301,25 +301,28 @@ const Renderer = new class {
     loop(timestamp=null) {
         // debugger;
 
+        timestamp ??= performance.now();
+
         // skip if no tick needed
-        if (timestamp) {
-            const difference = timestamp - this.previousTimestamp;
-            if (difference < this.goalMsPerTick) {
-                this.timeoutId = setTimeout(() => this.loop(performance.now()), this.goalMsPerTick - difference);
-                return;
-            }
+        const difference = timestamp - this.previousTimestamp;
+        if (difference < this.goalMsPerTick) {
+            // cancel any animation frame and switch to setTimeout
+            this.cancel();
+            this.timeoutId = setTimeout(() => this.loop(), this.goalMsPerTick - difference);
+            return;
         }
 
         this.calculate();
 
-        // only draw on new frame
-        if (!timestamp || timestamp !== this.previousTimestamp) {
+        // only draw on new frame (when called by requestAnimationFrame)
+        if (timestamp !== this.previousTimestamp) {
             this.redraw();
         }
 
         this.previousTimestamp = timestamp;
-        fps.render();
         this.animationId = requestAnimationFrame(timestamp => this.loop(timestamp));
+
+        fps.render();
     }
 
     step() {
