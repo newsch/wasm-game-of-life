@@ -1,5 +1,6 @@
-import { Universe, Cell, EdgeBehavior } from "wasm-game-of-life";
-import { memory } from "wasm-game-of-life/wasm_game_of_life_bg";
+import init, { Universe, Cell, EdgeBehavior } from "./pkg/wasm_game_of_life.js";
+
+const { memory }  = await init();
 
 const CELL_SIZE = 5;  // width/height in pixels
 const GRID_COLOR = "#EEEEEE";
