@@ -23,6 +23,12 @@ pub struct RleParser();
 
 const FILE_EXTENSIONS: &'static [&'static str] = &["rle"];
 
+mod tags {
+    pub const DEAD: char = 'b';
+    pub const ALIVE: char = 'o';
+    pub const EOL: char = '$';
+}
+
 impl LifeParser for RleParser {
     fn file_extensions(&self) -> &[&str] {
         FILE_EXTENSIONS
@@ -73,7 +79,7 @@ impl TryInto<Grid> for Rle {
 
         for (i, tag) in tag_seq {
             let state = match tag {
-                '$' => {
+                tags::EOL => {
                     // TODO: if already at end of line, skip?
                     for i in 0..i {
                         // fill to end of line
@@ -88,8 +94,8 @@ impl TryInto<Grid> for Rle {
                     }
                     continue;
                 }
-                'o' => Cell::Alive,
-                'b' => Cell::Dead,
+                tags::ALIVE => Cell::Alive,
+                tags::DEAD => Cell::Dead,
                 t => panic!("unexpected tag {t:?}"),
             };
 
@@ -148,9 +154,9 @@ fn header(i: &str) -> VIResult<&str, (usize, usize, Option<RuleSet>)> {
 }
 
 fn rle_tag(i: &str) -> VIResult<&str, char> {
-    let alive = char('b');
-    let dead = char('o');
-    let eol = char('$');
+    let alive = char(tags::ALIVE);
+    let dead = char(tags::DEAD);
+    let eol = char(tags::EOL);
     context("rle tag", alt((alive, dead, eol)))(i)
 }
 
@@ -237,12 +243,17 @@ mod test {
 
     #[test]
     fn test_cells() {
-        use Cell::*;
+        use tags::*;
         let input = "2b2o$bobo!";
         let rest = "";
         let output = vec![
-            vec![(2, Alive), (2, Dead)],
-            vec![(1, Alive), (1, Dead), (1, Alive), (1, Dead)],
+            (2, DEAD),
+            (2, ALIVE),
+            (1, EOL),
+            (1, DEAD),
+            (1, ALIVE),
+            (1, DEAD),
+            (1, ALIVE),
         ];
         assert_eq!(Ok((rest, output)), cells(input));
     }
