@@ -10,6 +10,17 @@ use nom::{
 
 use crate::Cell;
 
+/// Wrapper to include files from the root patterns/ directory
+macro_rules! include_pattern {
+    ($pattern_file:expr) => {
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/patterns/",
+            $pattern_file,
+        ))
+    };
+}
+
 mod plaintext;
 pub use plaintext::*;
 mod rle;

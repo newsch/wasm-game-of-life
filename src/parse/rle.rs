@@ -4,7 +4,7 @@
 
 use super::*;
 
-use std::{str::FromStr};
+use std::str::FromStr;
 
 use nom::{
     branch::alt,
@@ -203,15 +203,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        let input = //"#N p43 glider loop
-// #O Mike Playle
-// #C A period-43 oscillator based on a stable reflector
-// #C Discovered on 25 Apr 2013
-// #C www.conwaylife.com/wiki/P43_glider_loop
-"x = 65, y = 65, rule = B3/S23
-27b2o$27bobo$29bo4b2o$25b4ob2o2bo2bo$25bo2bo3bobob2o$28bobobobo$29b2ob!
-";
-
+        let input = include_pattern!("p43gliderloop.rle");
         let result = parse_rle(input);
         println!("{:?}", result);
         assert!(result.is_ok());
@@ -235,7 +227,7 @@ mod test {
 
     #[test]
     fn test_header_rules() {
-        let input = " x = 1, y = 3, r=3B/4a\nblah blah";
+        let input = " x = 1, y = 3, rule=3B/4a\nblah blah";
         let rest = "\nblah blah";
         let output = (1, 3, Some(("3B", "4a")));
         assert_eq!(Ok((rest, output)), header(input));

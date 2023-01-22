@@ -91,7 +91,7 @@ fn bang_comment(i: &str) -> VIResult<&str, ()> {
 mod test {
     use super::*;
 
-    const GLIDER: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/glider.cells"));
+    const GLIDER: &str = include_pattern!("glider.cells");
 
     #[test]
     fn test_parse() {
