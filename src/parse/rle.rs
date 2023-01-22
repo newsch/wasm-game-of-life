@@ -4,7 +4,7 @@
 
 use super::*;
 
-use std::{iter::repeat, str::FromStr};
+use std::{str::FromStr};
 
 use nom::{
     branch::alt,
@@ -12,9 +12,9 @@ use nom::{
     character::complete::{
         alphanumeric1, char, digit1, line_ending, multispace0, not_line_ending, space0,
     },
-    combinator::{eof, map, map_res, opt, peek, rest, value},
+    combinator::{map, map_res, opt, peek, rest, value},
     error::{context, ErrorKind, FromExternalError},
-    multi::{many0, separated_list0, separated_list1},
+    multi::{many0, separated_list0},
     sequence::{pair, preceded, separated_pair, terminated, tuple},
     Finish, Parser,
 };

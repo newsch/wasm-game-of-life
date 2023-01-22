@@ -19,7 +19,6 @@ pub struct PlaintextParser();
 const FILE_EXTENSIONS: &'static [&'static str] = &["cells"];
 
 impl LifeParser for PlaintextParser {
-
     fn file_extensions(&self) -> &[&str] {
         FILE_EXTENSIONS
     }

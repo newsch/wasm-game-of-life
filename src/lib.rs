@@ -56,7 +56,7 @@ pub struct Universe {
 
 #[cfg(feature = "wasm")]
 #[wasm_bindgen(start)]
-pub fn main() {
+pub fn wasm_main() {
     console_error_panic_hook::set_once();
     console_log::init()
         // console_log::init_with_level(Level::Trace)
