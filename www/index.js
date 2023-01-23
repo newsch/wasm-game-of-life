@@ -1,4 +1,5 @@
 import init, { Universe, Cell, EdgeBehavior } from "./pkg/wasm_game_of_life.js";
+import { Renderer } from "./utils.js";
 
 const { memory }  = await init();
 
@@ -7,53 +8,6 @@ const GRID_COLOR = "#EEEEEE";
 // const GRID_COLOR = "#FFFFFF";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
-
-let animationId = null;
-
-const fps = new class {
-  constructor() {
-    this.fps = document.getElementById("fps");
-    this.frames = [];
-    this.lastFrameTimeStamp = performance.now();
-  }
-
-  reset() {
-      this.frames = [];
-  }
-
-  render() {
-    // Convert the delta time since the last frame render into a measure
-    // of frames per second.
-    const now = performance.now();
-    const delta = now - this.lastFrameTimeStamp;
-    this.lastFrameTimeStamp = now;
-    const fps = 1 / delta * 1000;
-
-    // Save only the latest 100 timings.
-    this.frames.push(fps);
-    if (this.frames.length > 100) {
-      this.frames.shift();
-    }
-
-    // Find the max, min, and mean of our 100 latest timings.
-    let min = Infinity;
-    let max = -Infinity;
-    let sum = 0;
-    for (let i = 0; i < this.frames.length; i++) {
-      sum += this.frames[i];
-      min = Math.min(this.frames[i], min);
-      max = Math.max(this.frames[i], max);
-    }
-    let mean = sum / this.frames.length;
-
-    // Render the statistics.
-    this.fps.textContent = `FPS: ~${Math.round(mean)} -${Math.round(min)} +${Math.round(max)}`;
-  }
-};
-
-const isPaused = () => {
-    return !Renderer.isRunning();
-};
 
 const playPauseBtn = document.getElementById("play-pause");
 const stepBtn = document.getElementById("step");
@@ -67,21 +21,27 @@ const speedRange = document.getElementById("speed-range");
 const customUrlTxt = document.getElementById("custom-url");
 const customUrlBtn = document.getElementById("custom-url-submit");
 const edgeBehaviorSlt = document.getElementById("edge-behavior");
+const canvas = document.getElementById("game-of-life-canvas");
+
+const ctx = canvas.getContext("2d");
 
 function play() {
     playPauseBtn.textContent = "⏸";
     // playPauseBtn.textContent = "⏯";
     stepBtn.enabled = false;
-    Renderer.loop();
-    fps.reset();
+    renderer.loop();
 };
 
 function pause() {
     playPauseBtn.textContent = "▶";
     // playPauseBtn.textContent = "⏯";
-    Renderer.cancel();
+    renderer.cancel();
     stepBtn.enabled = true;
 }
+
+const isPaused = () => {
+    return !renderer.isRunning();
+};
 
 function reset(pattern) {
     if (pattern !== "custom" && (widthEl.value !== width || heightEl.value !== height)) {
@@ -132,7 +92,7 @@ playPauseBtn.addEventListener("click", () => {
 });
 
 stepBtn.addEventListener("click", () => {
-    Renderer.step();
+    renderer.step();
 });
 
 patternSlt.addEventListener("change", event => {
@@ -168,10 +128,10 @@ resetBtn.addEventListener("click", () => {
 speedNum.addEventListener("change", event => {
     const log = event.target.value;
     speedRange.value = speedFromLog(log);
-    Renderer.goalMsPerTick = speedToMsPerTick(log);
-    if (Renderer.isRunning()) {
-        Renderer.cancel();
-        Renderer.loop();
+    renderer.goalMsPerTick = speedToMsPerTick(log);
+    if (renderer.isRunning()) {
+        renderer.cancel();
+        renderer.loop();
     }
 });
 
@@ -179,10 +139,10 @@ speedRange.addEventListener("input", event => {
     const lin = event.target.value;
     const log = Math.round(speedToLog(lin) * 10) / 10;
     speedNum.value = log;
-    Renderer.goalMsPerTick = speedToMsPerTick(log);
-    if (Renderer.isRunning()) {
-        Renderer.cancel();
-        Renderer.loop();
+    renderer.goalMsPerTick = speedToMsPerTick(log);
+    if (renderer.isRunning()) {
+        renderer.cancel();
+        renderer.loop();
     }
 });
 
@@ -228,8 +188,6 @@ universe.reset_fancy();
 let width;
 let height;
 
-const canvas = document.getElementById("game-of-life-canvas");
-
 function resize_canvas() {
     const new_width = universe.width;
     const new_height = universe.height;
@@ -242,8 +200,6 @@ function resize_canvas() {
 }
 
 resize_canvas();
-
-const ctx = canvas.getContext("2d");
 
 canvas.addEventListener("click", event => {
     const boundingRect = canvas.getBoundingClientRect();
@@ -258,89 +214,8 @@ canvas.addEventListener("click", event => {
     const col = Math.min(Math.floor(canvasLeft / (CELL_SIZE + 1)), width - 1);
 
     universe.toggle_cell(row, col);
-    Renderer.redraw();
+    renderer.redraw();
 });
-
-const Renderer = new class {
-    constructor() {
-        this.previousTimestamp = 0;
-        this.animationId;
-        this.timeoutId;
-        this.method = "delta";
-        // this.method = "full";
-        this.goalMsPerTick = -Infinity;
-    }
-
-    calculate() {
-        switch (this.method) {
-            case "full":
-                universe.tick();
-                break;
-            case "delta":
-                universe.tick_delta();
-                break;
-            default:
-                throw `Unknown method: ${this.method}`;
-        }
-    }
-
-    redraw() {
-            switch (this.method) {
-                case "full":
-                    drawCells();
-                    break;
-                case "delta":
-                    drawCellsDelta();
-                    break;
-                default:
-                    throw `Unknown method: ${this.method}`;
-            }
-            // drawGrid();
-    }
-
-    loop(timestamp=null) {
-        // debugger;
-
-        timestamp ??= performance.now();
-
-        // skip if no tick needed
-        const difference = timestamp - this.previousTimestamp;
-        if (difference < this.goalMsPerTick) {
-            // cancel any animation frame and switch to setTimeout
-            this.cancel();
-            this.timeoutId = setTimeout(() => this.loop(), this.goalMsPerTick - difference);
-            return;
-        }
-
-        this.calculate();
-
-        // only draw on new frame (when called by requestAnimationFrame)
-        if (timestamp !== this.previousTimestamp) {
-            this.redraw();
-        }
-
-        this.previousTimestamp = timestamp;
-        this.animationId = requestAnimationFrame(timestamp => this.loop(timestamp));
-
-        fps.render();
-    }
-
-    step() {
-        this.calculate();
-        this.redraw();
-    }
-
-    cancel() {
-        cancelAnimationFrame(this.animationId);
-        this.animationId = null;
-        clearTimeout(this.timeoutId);
-        this.timeoutId = null;
-    }
-
-    isRunning() {
-        return this.animationId || this.timeoutId;
-    }
-};
 
 function drawGrid() {
     ctx.beginPath();
@@ -452,6 +327,40 @@ function drawCellsDelta() {
     }
 }
 
+class GoLRenderer extends Renderer {
+    method = "delta";
+
+    calculate() {
+        switch (this.method) {
+            case "full":
+                universe.tick();
+                break;
+            case "delta":
+                universe.tick_delta();
+                break;
+            default:
+                throw `Unknown method: ${this.method}`;
+        }
+    }
+
+    redraw() {
+        switch (this.method) {
+            case "full":
+                drawCells();
+                break;
+            case "delta":
+                drawCellsDelta();
+                break;
+            default:
+                throw `Unknown method: ${this.method}`;
+        }
+    }
+}
+
+const renderer = new GoLRenderer({fpsEl: document.getElementById("fps")});
+
 drawGrid();
 drawCells();
-// Renderer.loop();
+// renderer.loop();
+
+debugger;
