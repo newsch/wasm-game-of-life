@@ -1,5 +1,6 @@
 import init, { Universe, Cell, EdgeBehavior } from "./pkg/wasm_game_of_life.js";
 import { Renderer } from "./utils.js";
+import ctrl, { speedToMsPerTick } from "./controls.js";
 
 const { memory }  = await init();
 
@@ -9,34 +10,22 @@ const GRID_COLOR = "#EEEEEE";
 const DEAD_COLOR = "#FFFFFF";
 const ALIVE_COLOR = "#000000";
 
-const playPauseBtn = document.getElementById("play-pause");
-const stepBtn = document.getElementById("step");
-const patternSlt = document.getElementById("pattern-select");
-const resetBtn = document.getElementById("reset");
-const customTxt = document.getElementById("custom-txt");
-const widthEl = document.getElementById("width");
-const heightEl = document.getElementById("height");
-const speedNum = document.getElementById("speed-num");
-const speedRange = document.getElementById("speed-range");
-const customUrlTxt = document.getElementById("custom-url");
-const customUrlBtn = document.getElementById("custom-url-submit");
-const edgeBehaviorSlt = document.getElementById("edge-behavior");
 const canvas = document.getElementById("game-of-life-canvas");
 
 const ctx = canvas.getContext("2d");
 
 function play() {
-    playPauseBtn.textContent = "⏸";
+    ctrl.playPauseBtn.textContent = "⏸";
     // playPauseBtn.textContent = "⏯";
-    stepBtn.enabled = false;
+    ctrl.stepBtn.enabled = false;
     renderer.loop();
 };
 
 function pause() {
-    playPauseBtn.textContent = "▶";
+    ctrl.playPauseBtn.textContent = "▶";
     // playPauseBtn.textContent = "⏯";
     renderer.cancel();
-    stepBtn.enabled = true;
+    ctrl.stepBtn.enabled = true;
 }
 
 const isPaused = () => {
@@ -44,10 +33,10 @@ const isPaused = () => {
 };
 
 function reset(pattern) {
-    if (pattern !== "custom" && (widthEl.value !== width || heightEl.value !== height)) {
+    if (pattern !== "custom" && (ctrl.widthEl.value !== width || ctrl.heightEl.value !== height)) {
         // resize based on dimensions input
-        universe.width = widthEl.value;
-        universe.height = heightEl.value;
+        universe.width = ctrl.widthEl.value;
+        universe.height = ctrl.heightEl.value;
     }
 
     switch(pattern) {
@@ -62,28 +51,28 @@ function reset(pattern) {
             break;
         case "custom":
             try {
-                const file = new TextEncoder().encode(customTxt.value);
+                const file = new TextEncoder().encode(ctrl.customTxt.value);
                 universe.reset_from_file(file);
             } catch(e) {
                 console.error(e);
-                customTxt.setCustomValidity('Parse error: ' + e);
-                customTxt.reportValidity();
+                ctrl.customTxt.setCustomValidity('Parse error: ' + e);
+                ctrl.customTxt.reportValidity();
             }
-            customTxt.setCustomValidity('');
+            ctrl.customTxt.setCustomValidity('');
             break;
         default:
             throw "unknown pattern: " + pattern;
     }
 
     // TODO: update or persist edge behavior
-    edgeBehaviorSlt.value = "wrap";
+    ctrl.edgeBehaviorSlt.value = "wrap";
 
     resize_canvas();
     drawGrid();
     drawCells();
 }
 
-playPauseBtn.addEventListener("click", () => {
+ctrl.playPauseBtn.addEventListener("click", () => {
     if (isPaused()) {
         play();
     } else {
@@ -91,17 +80,17 @@ playPauseBtn.addEventListener("click", () => {
     }
 });
 
-stepBtn.addEventListener("click", () => {
+ctrl.stepBtn.addEventListener("click", () => {
     renderer.step();
 });
 
-patternSlt.addEventListener("change", event => {
+ctrl.patternSlt.addEventListener("change", event => {
     const pattern = event.target.value;
     // customTxt.disabled = (pattern !== "custom");
     reset(pattern);
 });
 
-edgeBehaviorSlt.addEventListener("change", event => {
+ctrl.edgeBehaviorSlt.addEventListener("change", event => {
     const behavior = event.target.value;
     let b
     switch (behavior) {
@@ -120,67 +109,35 @@ edgeBehaviorSlt.addEventListener("change", event => {
     universe.edge_behavior = b;
 });
 
-resetBtn.addEventListener("click", () => {
-    const pattern = patternSlt.value;
+ctrl.resetBtn.addEventListener("click", () => {
+    const pattern = ctrl.patternSlt.value;
     reset(pattern);
 });
 
-speedNum.addEventListener("change", event => {
-    const log = event.target.value;
-    speedRange.value = speedFromLog(log);
-    renderer.goalMsPerTick = speedToMsPerTick(log);
+ctrl.speedNum.addEventListener("change", event => {
+    const speed = event.target.value;
+    renderer.goalMsPerTick = speedToMsPerTick(speed);
     if (renderer.isRunning()) {
         renderer.cancel();
         renderer.loop();
     }
 });
 
-speedRange.addEventListener("input", event => {
-    const lin = event.target.value;
-    const log = Math.round(speedToLog(lin) * 10) / 10;
-    speedNum.value = log;
-    renderer.goalMsPerTick = speedToMsPerTick(log);
-    if (renderer.isRunning()) {
-        renderer.cancel();
-        renderer.loop();
-    }
-});
-
-customUrlBtn.addEventListener("click", async function (event) {
-    const url = customUrlTxt.value;
+ctrl.customUrlBtn.addEventListener("click", async function (event) {
+    const url = ctrl.customUrlTxt.value;
     try {
         const resp = await fetch(url);
         const text = resp.text();
             // .then(r => r.arrayBuffer())
             // .then(b => new Uint8Array(b));
-         customTxt.value = text;
-         debugger
+         ctrl.customTxt.value = text;
     } catch(e) {
         console.error(e);
-        customUrlTxt.setCustomValidity('Error fetching url: ' + e);
-        customUrlTxt.reportValidity();
+        ctrl.customUrlTxt.setCustomValidity('Error fetching url: ' + e);
+        ctrl.customUrlTxt.reportValidity();
     }
-    customUrlTxt.setCustomValidity('');
+    ctrl.customUrlTxt.setCustomValidity('');
 });
-
-const linMin = 0.1;
-const linMax = 100;
-const logMin = Math.log(0.5);
-const logMax = Math.log(100);
-const speedLinLogScale = (logMax - logMin) / (linMax - linMin);
-
-function speedToLog(lin) {
-    return Math.exp(logMin + speedLinLogScale*(lin-linMin));
-}
-
-function speedFromLog(log) {
-    return (Math.log(log)-logMin)/speedLinLogScale + linMin;
-}
-
-function speedToMsPerTick(speed) {
-    // speed is ticks per second
-    return 1000 / speed;
-}
 
 const universe = Universe.new(64, 64);
 universe.reset_fancy();
@@ -362,5 +319,3 @@ const renderer = new GoLRenderer({fpsEl: document.getElementById("fps")});
 drawGrid();
 drawCells();
 // renderer.loop();
-
-debugger;
