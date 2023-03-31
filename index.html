@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <title>Wasm Game of Life</title>
+    <style>
+        /* center canvas within page */
+        body {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        canvas {
+            cursor: crosshair;
+        }
+
+        #controls button, select {
+          margin: 5px;
+          height: 1.8rem;
+          min-width: 1.8rem;
+          line-height: 100%;
+        }
+
+        #controls #height, #width {
+          width: 3rem;
+        }
+
+        #speed-grp {
+            display: flex;
+            gap: 1rem;
+            max-width: 25rem;
+        }
+
+        #speed-grp input[type="number"] {
+          flex: 0 0;
+          min-width: 3rem;
+          max-height: 1.1rem;
+        }
+
+        #speed-grp div {
+          flex: 1 0;
+          width: 100%;
+        }
+
+        #speed-grp input[type="range"] {
+          width: 100%;
+        }
+
+        #speed-grp datalist {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+        }
+
+        #custom-txt {
+            resize: vertical;
+        }
+      </style>
+  </head>
+  <body>
+    <pre id="fps"></pre>
+    <canvas id="game-of-life-canvas"></canvas>
+    <form id="controls" onsubmit="event.preventDefault();">
+        <fieldset>
+            <legend>Board</legend>
+            <label>pattern:
+            <select id="pattern-select">
+                <option value="fancy">Fancy</option>
+                <option value="blank">Blank</option>
+                <option value="random">Random</option>
+                <option value="custom">Custom (see below)</option>
+            </select>
+            </label>
+            <label>size:
+            <input type="number" id="width" value="64" min="1"/>
+
+            <label>by</label>
+            <input type="number" id="height" value="64" min="1"/>
+            </label>
+            <label>edge behavior:
+            <select id="edge-behavior">
+                <option value="wrap">Wrap</option>
+                <option value="dead">Dead</option>
+                <option value="alive">Alive</option>
+            </select>
+            </label>
+        </fieldset>
+        <fieldset>
+            <legend>Playback</legend>
+            <button id="reset">reset</button>
+            <button id="play-pause">⏯</button>
+            <button id="step">step</button>
+        </fieldset>
+        <fieldset id="speed-grp">
+            <legend>Target Speed (Ticks/s):</legend>
+                <input type="number" id="speed-num" min="0" max="100" step="0.1"/>
+            <div>
+            <input type="range" id="speed-range" value="100" min="0" max="100" step="5" list="speed-markers"/>
+            <datalist id="speed-markers">
+              <option value="0" label="min"></option>
+              <option value="25"></option>
+              <option value="50"></option>
+              <option value="75"></option>
+              <option value="100" label="max"></option>
+            </datalist>
+            </div>
+        </fieldset>
+        <br>
+        <fieldset>
+            <legend>Custom pattern</legend>
+            <p><code>.cells</code> and <code>.rle</code> formats supported. <a href="https://conwaylife.com/wiki/">LifeWiki</a> has many to choose from.</p>
+            <textarea id="custom-txt" placeholder="Enter custom pattern..." rows="5" cols="80"></textarea>
+            <br>
+            <input type="text" id="custom-url"/>
+            <button id="custom-url-submit" placeholder="url">fetch from url</button>
+        </fieldset>
+    </form>
+
+    <script src="./index.js" type="module"></script>
+  </body>
+</html>
